@@ -277,6 +277,9 @@ public class ConnectionActivity extends Activity implements View.OnClickListener
         mBtnSim = (Button) findViewById(R.id.btn_sim);
         mBtnSim.setOnClickListener(this);
 
+        mBtnSim = (Button) findViewById(R.id.btn_launchai);
+        mBtnSim.setOnClickListener(this);
+
         mBtnTest = (Button) findViewById(R.id.btn_test);
         mBtnTest.setOnClickListener(this);
 
@@ -381,6 +384,15 @@ public class ConnectionActivity extends Activity implements View.OnClickListener
                 unregisterReceiver(mReceiver);
 
                 Intent intent = new Intent(this, MainActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivityIfNeeded(intent,0);
+                break;
+            }
+            case R.id.btn_launchai: {
+                mBtnOpen.setEnabled(false);
+                unregisterReceiver(mReceiver);
+
+                Intent intent = new Intent(this, MultiDroneActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivityIfNeeded(intent,0);
                 break;

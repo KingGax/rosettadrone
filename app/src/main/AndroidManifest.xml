@@ -82,6 +82,9 @@
             android:label="Settings">
         </activity>
 
+        <activity android:name="sq.rogue.rosettadrone.MultiDroneActivity">
+        </activity>
+
         <activity android:name="sq.rogue.rosettadrone.settings.Waypoint1Activity">
         </activity>
 
