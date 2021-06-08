@@ -5,6 +5,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.List;
 
 public class ClientMessageListener implements Runnable {
 
@@ -17,11 +18,17 @@ public class ClientMessageListener implements Runnable {
 
     private String delimiter = ";";
 
+    private ListenerCallbacks callback;
+
 
     @Override
     public void run() {
         this.initialize();
 
+    }
+
+    public void setListenerCallback(ListenerCallbacks c){
+        callback = c;
     }
 
     private void initialize() {
@@ -45,41 +52,16 @@ public class ClientMessageListener implements Runnable {
             // primanje paketa
             try {
                 socket.receive(packet);
+                System.out.println("I got somethinig");
                 InetAddress senderAddress = packet.getAddress();
                 int senderPort = packet.getPort();
 
                 String receivedText = new String(buffer).trim();
 
-                if(receivedText.startsWith(this.onlineStatusUpdateStartPattern)) {
-                    System.out.println("Should update list of online users");
-                    //this.handleOnlineStatusUpdate(receivedText);
-                    System.out.println(receivedText);
-                    continue;
-                }
-                if(receivedText.startsWith(this.onlineUsersStartPattern)) {
-                    System.out.println("Received list of online users");
-                    System.out.println(receivedText);
-                    //this.handleOnlineUsersList(receivedText);
-                    continue;
-                }
-
                 String[] strArr = receivedText.split(delimiter);
-                String data = strArr[1];
-                String recipient = strArr[0];
+                String message = strArr[0];
                 System.out.println("NEW DATA: "+receivedText);
-                /*ClientController controller = ClientController.getInstance();
-                if (recipient.equals(controller.getRecipient())) {
-                    Message msg = new Message(data, recipient); //
-                    controller.getChatView().addMessage(msg,false); // handle received msg
-                    System.out.println("New message from "+senderAddress+ " from port " +senderPort+ " ["+msg+"]");
-                } else {
-                    if (controller.getRecipient() == null) {
-                        controller.getChatView().setNotificationText(recipient+ " tried to send you message but you are not listening to anyone");
-                    } else {
-                        controller.getChatView().setNotificationText(recipient+ " tried to send you message but you are listening to "+controller.getRecipient());
-                    }
-
-                }*/
+                passMessage(message);
 
 
 
@@ -93,38 +75,15 @@ public class ClientMessageListener implements Runnable {
         }
     }
 
-    /*private void handleOnlineUsersList(String data) {
-        int startIndex = data.indexOf(this.onlineUsersStartPattern);
-        int endIndex = data.indexOf(this.onlineUsersEndPattern);
-        String truncatedData = data.substring(startIndex+this.onlineUsersStartPattern.length(), endIndex);
-
-        String[] strArr = truncatedData.split(this.delimiter);
-
-        for (int i = 0; i < strArr.length; i++) {
-            ClientController.getInstance().addUserToOnlineUsers(strArr[i]);
-        }
+    public void passMessage(String msg) {
+        callback.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                callback.handleReceived(msg);
+            }
+        });
     }
-    public void handleOnlineStatusUpdate(String data) {
-        int startIndex = data.indexOf(this.onlineStatusUpdateStartPattern);
-        int endIndex = data.indexOf(this.onlineStatusUpdateEndPattern);
-        //System.out.println(data);
-        String truncatedData = data.substring(startIndex+this.onlineStatusUpdateStartPattern.length(), endIndex);
 
-        String[] strArr = truncatedData.split(this.delimiter);
-        String type = strArr[0];
-        String username = strArr[1];
-
-        if (type.equals("CN")) {
-            ClientController.getInstance().addUserToOnlineUsers(username);
-            System.out.println("Should add "+strArr[1]);
-        }
-        if (type.equals("DC")) {
-            ClientController.getInstance().removeUserFromOnlineUsers(username);
-            System.out.println("Should remove "+strArr[1]);
-        }
-
-
-    }*/
 
     public int getPort() {
         return port;

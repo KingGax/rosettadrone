@@ -13,11 +13,13 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.List;
 
+import dji.sdk.mission.MissionControl;
 import sq.rogue.rosettadrone.shared.Notification;
 import sq.rogue.rosettadrone.shared.NotificationStatus;
 
-public class MultiDroneActivity extends AppCompatActivity {
+public class MultiDroneActivity extends ListenerCallbacks {
 
     EditText editTextAddress, editTextPort;
     Button buttonConnect;
@@ -37,7 +39,7 @@ public class MultiDroneActivity extends AppCompatActivity {
 
     //private static ClientController instance = null;
     //private ClientMessageListener clientListener = new ClientMessageListener();
-    //private boolean isMessageListenerInitialized = false;
+    private boolean isMessageListenerInitialized = false;
 
 
     //private ArrayList<String> onlineUsers = new ArrayList<>();
@@ -56,8 +58,7 @@ public class MultiDroneActivity extends AppCompatActivity {
         textViewRx = (TextView)findViewById(R.id.received);
 
         buttonConnect.setOnClickListener(buttonConnectOnClickListener);
-
-        udpClientHandler = new UdpClientHandler(this);
+        startMessageListener();
     }
 
     View.OnClickListener buttonConnectOnClickListener =
@@ -79,7 +80,6 @@ public class MultiDroneActivity extends AppCompatActivity {
                         public void run() {
                             sq.rogue.rosettadrone.Message mes = new sq.rogue.rosettadrone.Message("hi there","me");
                             try  {
-                                //sendMessage(mes,"£reee");
                                 notifyServer(NotificationStatus.CONNECTED);
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -98,6 +98,7 @@ public class MultiDroneActivity extends AppCompatActivity {
 
     private void updateRxMsg(String rxmsg){
         textViewRx.append(rxmsg + "\n");
+        System.out.println("add rxmsg "+ rxmsg);
     }
 
     private void clientEnd(){
@@ -105,6 +106,16 @@ public class MultiDroneActivity extends AppCompatActivity {
         textViewState.setText("clientEnd()");
         buttonConnect.setEnabled(true);
 
+    }
+
+    public void startMessageListener(){
+        if (isMessageListenerInitialized) {
+            return;
+        }
+        clientListener.setListenerCallback(this);
+        Thread clientListenerThread = new Thread(this.clientListener);
+        clientListenerThread.start(); // start thread in the background
+        this.isMessageListenerInitialized = true;
     }
 
     public static class UdpClientHandler extends Handler {
@@ -136,6 +147,11 @@ public class MultiDroneActivity extends AppCompatActivity {
             }
 
         }*/
+    }
+
+    @Override
+    public void handleReceived(String data) {
+        updateRxMsg(data);
     }
 
     public void notifyServer(NotificationStatus type) throws Exception{
