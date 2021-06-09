@@ -1,5 +1,7 @@
 package sq.rogue.rosettadrone;
 
+import androidx.annotation.UiThread;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -15,6 +17,9 @@ public class ClientMessageListener implements Runnable {
 
     private String onlineUsersStartPattern = "---START ONLINE U UPDATE---";
     private String onlineUsersEndPattern = "---END ONLINE U UPDATE---";
+
+    private final char ID_HEADER = 'i';
+    private final char MSG_HEADER = 'm';
 
     private String delimiter = ";";
 
@@ -79,7 +84,22 @@ public class ClientMessageListener implements Runnable {
         callback.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callback.handleReceived(msg);
+                switch (msg.charAt(0)){
+                    case ID_HEADER:
+                        callback.handleIdReceived(msg.substring(1));
+                        break;
+                    case MSG_HEADER:
+                        callback.handleDataReceived(msg.substring(1));
+                        break;
+                    default:
+                        System.out.println("BAD MESSAGE HEADER");
+                        System.out.println("BAD MESSAGE HEADER");
+                        System.out.println("BAD MESSAGE HEADER");
+                        System.out.println("BAD MESSAGE HEADER");
+                        System.out.println("BAD MESSAGE HEADER");
+                        System.out.println("BAD MESSAGE HEADER");
+                        break;
+                }
             }
         });
     }
