@@ -2,7 +2,6 @@ package sq.rogue.rosettadrone;
 
 import android.os.Handler;
 //import android.os.Message;
-import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -10,21 +9,14 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.autonavi.amap.mapcore.Convert;
-
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
-import dji.sdk.mission.MissionControl;
-import sq.rogue.rosettadrone.multidrone.UserDroneData;
+import multidrone.sharedclasses.UserDroneData;
 import sq.rogue.rosettadrone.shared.Notification;
 import sq.rogue.rosettadrone.shared.NotificationStatus;
 
