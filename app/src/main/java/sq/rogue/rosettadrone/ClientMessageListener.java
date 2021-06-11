@@ -81,27 +81,28 @@ public class ClientMessageListener implements Runnable {
     }
 
     public void passMessage(String msg) {
-        callback.runOnUiThread(new Runnable() {
+        switch (msg.charAt(0)){
+            case ID_HEADER:
+                callback.handleIdReceived(msg.substring(1));
+                break;
+            case MSG_HEADER:
+                callback.handleDataReceived(msg.substring(1));
+                break;
+            default:
+                System.out.println("BAD MESSAGE HEADER");
+                System.out.println("BAD MESSAGE HEADER");
+                System.out.println("BAD MESSAGE HEADER");
+                System.out.println("BAD MESSAGE HEADER");
+                System.out.println("BAD MESSAGE HEADER");
+                System.out.println("BAD MESSAGE HEADER");
+                break;
+        }
+        /*callback.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                switch (msg.charAt(0)){
-                    case ID_HEADER:
-                        callback.handleIdReceived(msg.substring(1));
-                        break;
-                    case MSG_HEADER:
-                        callback.handleDataReceived(msg.substring(1));
-                        break;
-                    default:
-                        System.out.println("BAD MESSAGE HEADER");
-                        System.out.println("BAD MESSAGE HEADER");
-                        System.out.println("BAD MESSAGE HEADER");
-                        System.out.println("BAD MESSAGE HEADER");
-                        System.out.println("BAD MESSAGE HEADER");
-                        System.out.println("BAD MESSAGE HEADER");
-                        break;
-                }
+
             }
-        });
+        });*/
     }
 
 

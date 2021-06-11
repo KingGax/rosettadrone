@@ -152,6 +152,7 @@
     <string name="options_map">Waypoint v1</string>
     <string name="options_map_new">Waypoint v2</string>
     <string name="options_gui">Switch Logging</string>
+    <string name="options_multidrone">Connect Multidrone</string>
 
     <!-- Error Messages -->
 

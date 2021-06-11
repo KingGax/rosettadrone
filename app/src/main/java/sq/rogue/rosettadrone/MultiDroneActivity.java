@@ -9,6 +9,9 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView;
+
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
@@ -20,14 +23,12 @@ import multidrone.sharedclasses.UserDroneData;
 import sq.rogue.rosettadrone.shared.Notification;
 import sq.rogue.rosettadrone.shared.NotificationStatus;
 
-public class MultiDroneActivity extends ListenerCallbacks {
+public class MultiDroneActivity extends AppCompatActivity implements ListenerCallbacks,MultiDroneCallbacks {
 
     EditText editTextAddress, editTextPort;
     Button buttonConnect;
     TextView textViewState, textViewRx;
 
-    UdpClientHandler udpClientHandler;
-    UdpClientThread udpClientThread;
 
     private int notificationsPort = 32323;
     private String serverAddress = "localhost";
@@ -35,6 +36,8 @@ public class MultiDroneActivity extends ListenerCallbacks {
     private UserDroneData myData = new UserDroneData();
     private String username = "test";
     private ClientMessageListener clientListener = new ClientMessageListener();
+
+    private MultiDroneHelper helper = new MultiDroneHelper(this);
 
     //private LoginView loginView;
     //private ChatView chatView;
@@ -67,7 +70,7 @@ public class MultiDroneActivity extends ListenerCallbacks {
                     try  {
                         myData.height+=1;
                         myData.batteryPercent-=1;
-                        sendData(myData);
+                        helper.sendData(myData);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -95,6 +98,9 @@ public class MultiDroneActivity extends ListenerCallbacks {
         myData.height = 0;
         buttonConnect.setOnClickListener(buttonConnectOnClickListener);
         startMessageListener();
+        helper.setListenerPort(clientListener.getPort());
+        helper.setUsername(username);
+        helper.setNotificationsPort(notificationsPort);
     }
 
     View.OnClickListener buttonConnectOnClickListener =
@@ -102,30 +108,11 @@ public class MultiDroneActivity extends ListenerCallbacks {
 
                 @Override
                 public void onClick(View arg0) {
+                    helper.startRegister(editTextAddress.getText().toString());
 
-                    /*udpClientThread = new UdpClientThread(
-                            editTextAddress.getText().toString(),
-                            Integer.parseInt(editTextPort.getText().toString()),
-                            udpClientHandler);
-                    udpClientThread.start();*/
 
-                    serverAddress = editTextAddress.getText().toString();
-                    Thread thread = new Thread(new Runnable() {
 
-                        @Override
-                        public void run() {
-                            sq.rogue.rosettadrone.Message mes = new sq.rogue.rosettadrone.Message("hi there","me");
-                            try  {
-                                notifyServer(NotificationStatus.CONNECTED);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    });
-                    thread.start();
-
-                    buttonConnect.setEnabled(false);
-                    registerTimeoutHandler.postDelayed(registerTimeoutRunnable, 1000L);
+                    //registerTimeoutHandler.postDelayed(registerTimeoutRunnable, 1000L);
                 }
             };
 
@@ -138,11 +125,6 @@ public class MultiDroneActivity extends ListenerCallbacks {
         System.out.println("add rxmsg "+ rxmsg);
     }
 
-    private void clientEnd(){
-        udpClientThread = null;
-        textViewState.setText("clientEnd()");
-        buttonConnect.setEnabled(true);
-    }
 
     public void startMessageListener(){
         if (isMessageListenerInitialized) {
@@ -154,88 +136,52 @@ public class MultiDroneActivity extends ListenerCallbacks {
         this.isMessageListenerInitialized = true;
     }
 
-    public static class UdpClientHandler extends Handler {
-        public static final int UPDATE_STATE = 0;
-        public static final int UPDATE_MSG = 1;
-        public static final int UPDATE_END = 2;
-        private MultiDroneActivity parent;
-
-        public UdpClientHandler(MultiDroneActivity parent) {
-            super();
-            this.parent = parent;
-        }
-
-        /*@Override
-        public void handleMessage(Message msg) {
-
-            switch (msg.what){
-                case UPDATE_STATE:
-                    parent.updateState((String)msg.obj);
-                    break;
-                case UPDATE_MSG:
-                    parent.updateRxMsg((String)msg.obj);
-                    break;
-                case UPDATE_END:
-                    parent.clientEnd();
-                    break;
-                default:
-                    super.handleMessage(msg);
+    @Override
+    public void onStartConnect() {
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                buttonConnect.setEnabled(false);
             }
+        });
 
-        }*/
+    }
+
+    @Override
+    public void onConnectTimeout() {
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (!registeredWithServer){
+                    buttonConnect.setEnabled(true);
+                    showToast("Did not receive user ID from server");
+                }
+            }
+        });
     }
 
     @Override
     public void handleDataReceived(String data) {
-        updateRxMsg(data);
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                updateRxMsg(data);
+            }
+        });
     }
     @Override
     public void handleIdReceived(String id) {
-        updateRxMsg("My id is " + id);
-        registeredWithServer = true;
-        myId = Integer.parseInt(id);
-        myData.id = myId;
-        registerTimeoutHandler.removeCallbacks(registerTimeoutRunnable);
-        sendDataThread.start();
-    }
-
-    public void notifyServer(NotificationStatus type) throws Exception{
-        DatagramSocket socket = new DatagramSocket();
-
-        Notification n = new Notification(this.username, type,this.clientListener.getPort());
-
-        String msg = n.serialize();
-
-        byte[] buffer = msg.getBytes();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(this.serverAddress), this.notificationsPort); 																												// paketa
-        socket.send(packet);
-        socket.close();
-    }
-
-    public void sendData(UserDroneData data) throws Exception{
-        System.out.println("attempting to send data");
-        DatagramSocket socket = new DatagramSocket();
-        ByteArrayOutputStream bStream = new ByteArrayOutputStream();
-        ObjectOutput oo = new ObjectOutputStream(bStream);
-
-        oo.writeObject(data);
-        oo.close();
-
-        byte[] buffer = bStream.toByteArray();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(this.serverAddress), this.notificationsPort); 																												// paketa
-        socket.send(packet);
-        socket.close();
-        System.out.println("attempting to send data");
-    }
-
-    public void transmitData(Message msg,String recipientPassed) throws Exception{
-        String delimiter = ";";
-        String data = "M"+delimiter+this.username+delimiter+this.recipient+delimiter+msg.getData();
-        DatagramSocket socket = new DatagramSocket();
-        byte[] buffer = data.getBytes();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(this.serverAddress), this.notificationsPort); 																												// paketa
-        socket.send(packet);
-        socket.close();
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                updateRxMsg("My id is " + id);
+                registeredWithServer = true;
+                myId = Integer.parseInt(id);
+                myData.id = myId;
+                registerTimeoutHandler.removeCallbacks(registerTimeoutRunnable);
+                sendDataThread.start();
+            }
+        });
 
     }
 

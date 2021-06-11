@@ -41,6 +41,10 @@
         app:showAsAction="never"
         android:onClick="onMenuItemClick"
         android:title="@string/options_gui" />
+    <item
+        android:id="@+id/action_multidrone"
+        android:onClick="onMenuItemClick"
+        android:title="@string/options_multidrone" />
 
 
 </menu>

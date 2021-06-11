@@ -96,10 +96,12 @@ import dji.sdk.codec.DJICodecManager;
 import dji.sdk.products.Aircraft;
 import dji.sdk.sdkmanager.DJISDKInitEvent;
 import dji.sdk.sdkmanager.DJISDKManager;
+import multidrone.sharedclasses.UserDroneData;
 import sq.rogue.rosettadrone.logs.LogFragment;
 import sq.rogue.rosettadrone.settings.SettingsActivity;
 import sq.rogue.rosettadrone.settings.Waypoint1Activity;
 import sq.rogue.rosettadrone.settings.Waypoint2Activity;
+import sq.rogue.rosettadrone.shared.NotificationStatus;
 import sq.rogue.rosettadrone.video.NativeHelper;
 import sq.rogue.rosettadrone.video.VideoService;
 
@@ -107,7 +109,7 @@ import static com.google.android.material.snackbar.Snackbar.LENGTH_LONG;
 import static sq.rogue.rosettadrone.util.safeSleep;
 
 //public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,ListenerCallbacks,MultiDroneCallbacks {
 
     //    public static final String FLAG_CONNECTION_CHANGE = "dji_sdk_connection_change";
     private final static int RESULT_SETTINGS = 1001;
@@ -180,6 +182,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int videoViewHeight;
     protected SharedPreferences sharedPreferences;
     private boolean mIsTranscodedVideoFeedNeeded = false;
+
+    private int notificationsPort = 32323;
+    private String serverAddress = "localhost";
+
+    private UserDroneData myData = new UserDroneData();
+    private String username = "test";
+    private ClientMessageListener clientListener = new ClientMessageListener();
+
+    private MultiDroneHelper helper = new MultiDroneHelper(this);
+
+    boolean connectingToMultiDrone = false;
+    boolean connectedToMultiDrone = false;
+    boolean isMessageListenerInitialized = false;
 
     private Runnable djiUpdateRunnable = () -> {
         Intent intent = new Intent(DJISimulatorApplication.FLAG_CONNECTION_CHANGE);
@@ -1146,10 +1161,41 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             case R.id.action_gui:
                 onClickGUI();
                 break;
+            case R.id.action_multidrone:
+                onStartMultidrone();
             default:
                 return false;
         }
         return true;
+    }
+
+    public void startMessageListener(){
+        if (isMessageListenerInitialized) {
+            return;
+        }
+        clientListener.setListenerCallback(this);
+        Thread clientListenerThread = new Thread(this.clientListener);
+        clientListenerThread.start(); // start thread in the background
+        this.isMessageListenerInitialized = true;
+    }
+
+    public void onStartMultidrone(){
+        notificationsPort = Integer.parseInt(prefs.getString("pref_telem_port", "32323"));
+        serverAddress = prefs.getString("pref_gcs_ip", "127.0.0.1");
+        startMessageListener();
+        helper.setListenerPort(clientListener.getPort());
+        helper.setUsername(username);
+        helper.setNotificationsPort(notificationsPort);
+        helper.startRegister(serverAddress);
+        System.out.println("notif:" + notificationsPort);
+        System.out.println("ip:" + serverAddress);
+
+        //int telemIPPort = Integer.parseInt(Objects.requireNonNull(mainActivityWeakReference.get().prefs.getString("pref_telem_port", "14550")));
+        //serverAddress = editTextAddress.getText().toString();
+        //MultiDroneHelper.notifyServer(NotificationStatus.CONNECTED,username,clientListener.getPort(),serverAddress, notificationsPort);
+
+        //buttonConnect.setEnabled(false);
+        //registerTimeoutHandler.postDelayed(registerTimeoutRunnable, 1000L);
     }
 
     public void onSmallMapClick(View v) {
@@ -1557,6 +1603,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.e(TAG, "onPointerCaptureChanged");
     }
 
+    @Override
+    public void onStartConnect() {
+        System.out.println("start connect");
+    }
+
+    @Override
+    public void onConnectTimeout() {
+        System.out.println("connect timeout");
+    }
+
 
     //region GCS Timer Task
     //---------------------------------------------------------------------------------------
@@ -1807,5 +1863,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //---------------------------------------------------------------------------------------
     //endregion
+
+    @Override
+    public void handleDataReceived(String data) {
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("Ping recieved");
+                mModel.armMotors();
+                mModel.takePhoto();
+            }
+        });
+    }
+    @Override
+    public void handleIdReceived(String id) {
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("id recievie");
+            }
+        });
+
+    }
 
 }

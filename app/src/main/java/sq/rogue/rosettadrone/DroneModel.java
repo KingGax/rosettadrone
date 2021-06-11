@@ -106,6 +106,7 @@ import static com.MAVLink.enums.MAV_CMD.MAV_CMD_NAV_TAKEOFF;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_VIDEO_START_CAPTURE;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_VIDEO_STOP_CAPTURE;
 import static com.MAVLink.enums.MAV_COMPONENT.MAV_COMP_ID_AUTOPILOT1;
+import static com.google.android.material.snackbar.BaseTransientBottomBar.LENGTH_LONG;
 import static sq.rogue.rosettadrone.util.getTimestampMicroseconds;
 import static sq.rogue.rosettadrone.util.safeSleep;
 
@@ -744,9 +745,14 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         if (mSafetyEnabled) {
             parent.logMessageDJI(parent.getResources().getString(R.string.safety_launch));
             send_command_ack(MAV_CMD_COMPONENT_ARM_DISARM, MAV_RESULT.MAV_RESULT_DENIED);
+            NotificationHandler.notifySnackbar(parent.findViewById(R.id.snack),
+                    R.string.safety_on, LENGTH_LONG);
         } else {
             send_command_ack(MAV_CMD_COMPONENT_ARM_DISARM, MAV_RESULT.MAV_RESULT_ACCEPTED);
             mMotorsArmed = true;
+            NotificationHandler.notifySnackbar(parent.findViewById(R.id.snack),
+                    R.string.safety_off, LENGTH_LONG);
+
         }
 
 //
