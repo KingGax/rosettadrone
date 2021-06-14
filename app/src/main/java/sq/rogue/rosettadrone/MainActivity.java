@@ -1171,8 +1171,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     public void onStartMultidrone(){
-        notificationsPort = Integer.parseInt(prefs.getString("pref_telem_port", "32323"));
-        serverAddress = prefs.getString("pref_gcs_ip", "127.0.0.1");
+        notificationsPort = Integer.parseInt(prefs.getString("pref_register_port", "32323"));
+        serverAddress = prefs.getString("pref_register_address", "192.168.1.51");
         helper.setListenerPort(clientListener.getPort());
         helper.setUsername(username);
         helper.setNotificationsPort(notificationsPort);
@@ -1871,6 +1871,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 System.out.println("id recievie");
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putString("pref_telem_port",Integer.toString(port));
+                editor.commit();
+                FLAG_PREFS_CHANGED = true;
+                FLAG_TELEMETRY_ADDRESS_CHANGED = true;
             }
         });
 
