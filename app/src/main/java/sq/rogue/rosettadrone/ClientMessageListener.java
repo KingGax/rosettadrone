@@ -63,10 +63,8 @@ public class ClientMessageListener implements Runnable {
 
                 String receivedText = new String(buffer).trim();
 
-                String[] strArr = receivedText.split(delimiter);
-                String message = strArr[0];
                 System.out.println("NEW DATA: "+receivedText);
-                passMessage(message);
+                passMessage(receivedText);
 
 
 

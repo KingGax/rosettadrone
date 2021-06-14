@@ -109,7 +109,7 @@ import static com.google.android.material.snackbar.Snackbar.LENGTH_LONG;
 import static sq.rogue.rosettadrone.util.safeSleep;
 
 //public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,ListenerCallbacks,MultiDroneCallbacks {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,MultiDroneCallbacks {
 
     //    public static final String FLAG_CONNECTION_CHANGE = "dji_sdk_connection_change";
     private final static int RESULT_SETTINGS = 1001;
@@ -1169,20 +1169,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return true;
     }
 
-    public void startMessageListener(){
-        if (isMessageListenerInitialized) {
-            return;
-        }
-        clientListener.setListenerCallback(this);
-        Thread clientListenerThread = new Thread(this.clientListener);
-        clientListenerThread.start(); // start thread in the background
-        this.isMessageListenerInitialized = true;
-    }
 
     public void onStartMultidrone(){
         notificationsPort = Integer.parseInt(prefs.getString("pref_telem_port", "32323"));
         serverAddress = prefs.getString("pref_gcs_ip", "127.0.0.1");
-        startMessageListener();
         helper.setListenerPort(clientListener.getPort());
         helper.setUsername(username);
         helper.setNotificationsPort(notificationsPort);
@@ -1876,7 +1866,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
     @Override
-    public void handleIdReceived(String id) {
+    public void handleIdReceived(int id, int port) {
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {

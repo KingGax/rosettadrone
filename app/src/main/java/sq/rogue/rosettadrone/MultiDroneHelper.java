@@ -16,10 +16,13 @@ import sq.rogue.rosettadrone.shared.NotificationStatus;
 
 public class MultiDroneHelper implements ListenerCallbacks {
     private String serverAddress;
-    private String username;
+    private String username = "test";
     private int listenerPort;
-    private int notificationsPort;
+    private int notificationsPort = 32323;
+    private int dataPort = 0;
     private MultiDroneCallbacks parent;
+    private boolean isMessageListenerInitialized = false;
+    private ClientMessageListener clientListener = new ClientMessageListener();
     private Handler registerTimeoutHandler = new Handler();
     private Runnable registerTimeoutRunnable = new Runnable() {
         @Override
@@ -70,6 +73,10 @@ public class MultiDroneHelper implements ListenerCallbacks {
         listenerPort = _listenerPort;
     }
 
+    public void setDataPort(int dataPort) {
+        this.dataPort = dataPort;
+    }
+
     public void setNotificationsPort(int notificationsPort) {
         this.notificationsPort = notificationsPort;
     }
@@ -79,37 +86,61 @@ public class MultiDroneHelper implements ListenerCallbacks {
     }
 
     public void sendData(UserDroneData data) throws Exception{
-        System.out.println("attempting to send data");
-        DatagramSocket socket = new DatagramSocket();
-        ByteArrayOutputStream bStream = new ByteArrayOutputStream();
-        ObjectOutput oo = new ObjectOutputStream(bStream);
+        if (dataPort != 0){
+            System.out.println("attempting to send data");
+            DatagramSocket socket = new DatagramSocket();
+            ByteArrayOutputStream bStream = new ByteArrayOutputStream();
+            ObjectOutput oo = new ObjectOutputStream(bStream);
 
-        oo.writeObject(data);
-        oo.close();
+            oo.writeObject(data);
+            oo.close();
 
-        byte[] buffer = bStream.toByteArray();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(this.serverAddress), this.notificationsPort); 																												// paketa
-        socket.send(packet);
-        socket.close();
-        System.out.println("attempting to send data");
+            byte[] buffer = bStream.toByteArray();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(this.serverAddress), this.dataPort); 																												// paketa
+            socket.send(packet);
+            socket.close();
+            System.out.println("attempting to send data");
+        } else{
+            System.out.println("SENDING DATA WITHOUT DATA PORT - bad program");
+        }
+
     }
 
     public void startRegister(String _serverAddress){
         if (_serverAddress != null){
             setServerAddress(_serverAddress);
         }
-        notifyServer(NotificationStatus.CONNECTED,username,listenerPort,serverAddress, notificationsPort);
+
         parent.onStartConnect();
+        startMessageListener();
+        setListenerPort(clientListener.getPort());
+        notifyServer(NotificationStatus.CONNECTED,username,listenerPort,serverAddress, notificationsPort);
         registerTimeoutHandler.postDelayed(registerTimeoutRunnable, 1000L);
+    }
+
+    public void startMessageListener(){
+        if (isMessageListenerInitialized) {
+            return;
+        }
+        clientListener.setListenerCallback(this);
+        Thread clientListenerThread = new Thread(this.clientListener);
+        clientListenerThread.start(); // start thread in the background
+        this.isMessageListenerInitialized = true;
     }
 
     @Override
     public void handleDataReceived(String data) {
-
+        parent.handleDataReceived(data);
     }
 
     @Override
     public void handleIdReceived(String data) {
-
+        String[] message = data.split(";");
+        System.out.println("id data:" + data);
+        System.out.println(message);
+        int port = Integer.parseInt(message[1]);
+        int id = Integer.parseInt(message[0]);
+        setDataPort(port);
+        parent.handleIdReceived(id,port);
     }
 }

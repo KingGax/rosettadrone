@@ -23,7 +23,7 @@ import multidrone.sharedclasses.UserDroneData;
 import sq.rogue.rosettadrone.shared.Notification;
 import sq.rogue.rosettadrone.shared.NotificationStatus;
 
-public class MultiDroneActivity extends AppCompatActivity implements ListenerCallbacks,MultiDroneCallbacks {
+public class MultiDroneActivity extends AppCompatActivity implements MultiDroneCallbacks {
 
     EditText editTextAddress, editTextPort;
     Button buttonConnect;
@@ -35,7 +35,7 @@ public class MultiDroneActivity extends AppCompatActivity implements ListenerCal
 
     private UserDroneData myData = new UserDroneData();
     private String username = "test";
-    private ClientMessageListener clientListener = new ClientMessageListener();
+    //private ClientMessageListener clientListener = new ClientMessageListener();
 
     private MultiDroneHelper helper = new MultiDroneHelper(this);
 
@@ -97,10 +97,7 @@ public class MultiDroneActivity extends AppCompatActivity implements ListenerCal
         myData.batteryPercent = 100;
         myData.height = 0;
         buttonConnect.setOnClickListener(buttonConnectOnClickListener);
-        startMessageListener();
-        helper.setListenerPort(clientListener.getPort());
-        helper.setUsername(username);
-        helper.setNotificationsPort(notificationsPort);
+
     }
 
     View.OnClickListener buttonConnectOnClickListener =
@@ -125,16 +122,6 @@ public class MultiDroneActivity extends AppCompatActivity implements ListenerCal
         System.out.println("add rxmsg "+ rxmsg);
     }
 
-
-    public void startMessageListener(){
-        if (isMessageListenerInitialized) {
-            return;
-        }
-        clientListener.setListenerCallback(this);
-        Thread clientListenerThread = new Thread(this.clientListener);
-        clientListenerThread.start(); // start thread in the background
-        this.isMessageListenerInitialized = true;
-    }
 
     @Override
     public void onStartConnect() {
@@ -170,13 +157,13 @@ public class MultiDroneActivity extends AppCompatActivity implements ListenerCal
         });
     }
     @Override
-    public void handleIdReceived(String id) {
+    public void handleIdReceived(int id, int port) {
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 updateRxMsg("My id is " + id);
                 registeredWithServer = true;
-                myId = Integer.parseInt(id);
+                myId = id;
                 myData.id = myId;
                 registerTimeoutHandler.removeCallbacks(registerTimeoutRunnable);
                 sendDataThread.start();
