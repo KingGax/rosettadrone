@@ -713,23 +713,23 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
         try {
             if (ticks % 100 == 0) {
-                send_attitude();
+                send_attitude();//#30
                 send_altitude();
                 send_vibration();
-                send_vfr_hud();
+                send_vfr_hud();//#74
             }
             if (ticks % 200 == 0) {
-                send_global_position_int(); // We use this for the AI se need 5Hz...
+                send_global_position_int(); // We use this for the AI se need 5Hz...  #33
             }
             if (ticks % 300 == 0) {
-                send_gps_raw_int();
-                send_radio_status();
-                send_rc_channels();
+                send_gps_raw_int();//#24
+                send_radio_status();//#109
+                send_rc_channels();//#65
             }
             if (ticks % 1000 == 0) {
-                send_heartbeat();
-                send_sys_status();
-                send_power_status();
+                send_heartbeat();//#0
+                send_sys_status();//#1
+                send_power_status();//#125
                 send_battery_status();
             }
             if (ticks % 5000 == 0) {
@@ -753,21 +753,21 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             NotificationHandler.notifySnackbar(parent.findViewById(R.id.snack),
                     R.string.safety_off, LENGTH_LONG);
 
+            djiAircraft.getFlightController().turnOnMotors(new CommonCallbacks.CompletionCallback() {
+                @Override
+                public void onResult(DJIError djiError) {
+                    // TODO reattempt if arming/disarming fails
+                    if (djiError == null) {
+                        send_command_ack(MAV_CMD_COMPONENT_ARM_DISARM, MAV_RESULT.MAV_RESULT_ACCEPTED);
+                        mSafetyEnabled = false;
+                    } else
+                        send_command_ack(MAV_CMD_COMPONENT_ARM_DISARM, MAV_RESULT.MAV_RESULT_FAILED);
+                    Log.d(TAG, "onResult()");
+                }
+            });
+
         }
 
-//
-//        djiAircraft.getFlightController().turnOnMotors(new CommonCallbacks.CompletionCallback() {
-//            @Override
-//            public void onResult(DJIError djiError) {
-//                // TODO reattempt if arming/disarming fails
-//                if (djiError == null) {
-//                    send_command_ack(MAV_CMD_COMPONENT_ARM_DISARM, MAV_RESULT.MAV_RESULT_ACCEPTED);
-//                    mSafetyEnabled = false;
-//                } else
-//                    send_command_ack(MAV_CMD_COMPONENT_ARM_DISARM, MAV_RESULT.MAV_RESULT_FAILED);
-//                Log.d(TAG, "onResult()");
-//            }
-//        });
     }
 
     void disarmMotors() {
@@ -2428,6 +2428,10 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         double height = el1 - el2;
         distance = Math.pow(distance, 2) + Math.pow(height, 2);
         return Math.sqrt(distance);
+    }
+
+    public void setCurrentPosAsHome(){
+        set_home_position(get_current_lat(),get_current_lon());
     }
 
     /**

@@ -17,9 +17,12 @@ import sq.rogue.rosettadrone.shared.NotificationStatus;
 public class MultiDroneHelper implements ListenerCallbacks {
     private String serverAddress;
     private String username = "test";
+    private final String delimeter = ";";
     private int listenerPort;
     private int notificationsPort = 32323;
+    private int mavPort= 0;
     private int dataPort = 0;
+    int myID = -1;
     private MultiDroneCallbacks parent;
     private boolean isMessageListenerInitialized = false;
     private ClientMessageListener clientListener = new ClientMessageListener();
@@ -30,6 +33,17 @@ public class MultiDroneHelper implements ListenerCallbacks {
             parent.onConnectTimeout();
         }
     };
+
+    private Handler portResendHandler = new Handler();
+    private Runnable portResendRunnable = new Runnable() {
+        @Override
+        public void run() {
+            sendMavPort(myID,mavPort,serverAddress,notificationsPort);
+            portResendHandler.postDelayed(portResendRunnable,1000L);
+        }
+    };
+
+
 
 
     public void notifyServer(NotificationStatus type,String username, int port, String serverAddress, int notificationsPort) {
@@ -43,6 +57,37 @@ public class MultiDroneHelper implements ListenerCallbacks {
                     Notification n = new Notification(username, type,port);
 
                     String msg = n.serialize();
+
+                    byte[] buffer = msg.getBytes();
+                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(serverAddress), notificationsPort); 																												// paketa
+                    socket.send(packet);
+                    socket.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        thread.start();
+
+    }
+
+    public void updateMavPort(int port){
+        if (myID != -1){
+            mavPort = port;
+            portResendHandler.post(portResendRunnable);
+        }
+    }
+    private void sendMavPort(int id, int port, String serverAddress, int notificationsPort) {
+        Thread thread = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try  {
+                    DatagramSocket socket = new DatagramSocket();
+
+
+
+                    String msg = "P" + port + delimeter + id;
 
                     byte[] buffer = msg.getBytes();
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(serverAddress), notificationsPort); 																												// paketa
@@ -141,6 +186,12 @@ public class MultiDroneHelper implements ListenerCallbacks {
         int port = Integer.parseInt(message[1]);
         int id = Integer.parseInt(message[0]);
         setDataPort(port);
+        myID = id;
         parent.handleIdReceived(id,port);
+    }
+
+    @Override
+    public void handleMavPortAck() {
+        portResendHandler.removeCallbacks(portResendRunnable);
     }
 }

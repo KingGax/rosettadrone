@@ -20,6 +20,7 @@ public class ClientMessageListener implements Runnable {
 
     private final char ID_HEADER = 'i';
     private final char MSG_HEADER = 'm';
+    private final char ACK_HEADER = 'a';
 
     private String delimiter = ";";
 
@@ -86,6 +87,13 @@ public class ClientMessageListener implements Runnable {
             case MSG_HEADER:
                 callback.handleDataReceived(msg.substring(1));
                 break;
+            case ACK_HEADER:
+                callback.handleMavPortAck();
+                if (msg == (ACK_HEADER+"MAVPORT")){
+                    callback.handleMavPortAck();
+                }
+                break;
+
             default:
                 System.out.println("BAD MESSAGE HEADER");
                 System.out.println("BAD MESSAGE HEADER");

@@ -1816,6 +1816,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 }
             }
+            mainActivityWeakReference.get().updateServerMavPort();
         }
 
         protected void close() {
@@ -1860,8 +1861,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 System.out.println("Ping recieved");
-                mModel.armMotors();
-                mModel.takePhoto();
+                mModel.setCurrentPosAsHome();
+                //mModel.armMotors();
+                //mModel.takePhoto();
+
             }
         });
     }
@@ -1874,11 +1877,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 SharedPreferences.Editor editor = prefs.edit();
                 editor.putString("pref_telem_port",Integer.toString(port));
                 editor.commit();
-                FLAG_PREFS_CHANGED = true;
-                FLAG_TELEMETRY_ADDRESS_CHANGED = true;
+                restartSockets();
             }
         });
 
+    }
+
+    public void updateServerMavPort(){
+        helper.updateMavPort(socket.getLocalPort());
+    }
+
+    void restartSockets() {
+        if (mGCSCommunicator != null) {
+            mGCSCommunicator.renewDatalinks();
+            /*if (FLAG_TELEMETRY_ADDRESS_CHANGED) {
+
+                if (mExternalVideoOut == false) {
+                    if (!prefs.getBoolean("pref_separate_gcs", false)) {
+                        sendRestartVideoService();
+                    }
+                }
+//                FLAG_TELEMETRY_ADDRESS_CHANGED = false;
+            }
+            if (mExternalVideoOut == false) {
+                if (FLAG_VIDEO_ADDRESS_CHANGED) {
+                    sendRestartVideoService();
+                    FLAG_VIDEO_ADDRESS_CHANGED = false;
+                }
+            }*/
+        }
     }
 
 }
