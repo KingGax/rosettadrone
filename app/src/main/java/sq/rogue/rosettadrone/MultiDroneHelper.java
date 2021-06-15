@@ -22,6 +22,7 @@ public class MultiDroneHelper implements ListenerCallbacks {
     private int notificationsPort = 32323;
     private int mavPort= 0;
     private int dataPort = 0;
+    private short sysID = 0;
     int myID = -1;
     private MultiDroneCallbacks parent;
     private boolean isMessageListenerInitialized = false;
@@ -38,7 +39,7 @@ public class MultiDroneHelper implements ListenerCallbacks {
     private Runnable portResendRunnable = new Runnable() {
         @Override
         public void run() {
-            sendMavPort(myID,mavPort,serverAddress,notificationsPort);
+            sendMavDetails(myID,mavPort,serverAddress,notificationsPort,sysID);
             portResendHandler.postDelayed(portResendRunnable,1000L);
         }
     };
@@ -71,13 +72,14 @@ public class MultiDroneHelper implements ListenerCallbacks {
 
     }
 
-    public void updateMavPort(int port){
+    public void updateMavDetails(int port,short droneSysID){
         if (myID != -1){
             mavPort = port;
+            sysID = droneSysID;
             portResendHandler.post(portResendRunnable);
         }
     }
-    private void sendMavPort(int id, int port, String serverAddress, int notificationsPort) {
+    private void sendMavDetails(int id, int port, String serverAddress, int notificationsPort, short sysID) {
         Thread thread = new Thread(new Runnable() {
 
             @Override
@@ -87,7 +89,7 @@ public class MultiDroneHelper implements ListenerCallbacks {
 
 
 
-                    String msg = "P" + port + delimeter + id;
+                    String msg = "P" + port + delimeter + id + delimeter + sysID;
 
                     byte[] buffer = msg.getBytes();
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(serverAddress), notificationsPort); 																												// paketa

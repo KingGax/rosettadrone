@@ -1627,6 +1627,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private static final String TAG = GCSSenderTimerTask.class.getSimpleName();
         boolean request_renew_datalinks = false;
         private Timer timer;
+        private int counter = 0;
         private WeakReference<MainActivity> mainActivityWeakReference;
 
         GCSCommunicatorAsyncTask(MainActivity mainActivity) {
@@ -1702,7 +1703,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         byte[] buf = new byte[1000];
                         DatagramPacket dp = new DatagramPacket(buf, buf.length);
+                        //NotificationHandler.notifySnackbar(mainActivityWeakReference.get().findViewById(R.id.snack),
+                        //        R.string.message_waiting, LENGTH_LONG);
+                        counter++;
+                        if (counter > 140){
+                            //mainActivityWeakReference.get().showToast(mainActivityWeakReference.get().socket.getLocalAddress() + ":" + mainActivityWeakReference.get().socket.getLocalPort());
+                            counter = 0;
+                        }
                         mainActivityWeakReference.get().socket.receive(dp);
+                        NotificationHandler.notifySnackbar(mainActivityWeakReference.get().findViewById(R.id.snack),
+                                R.string.message_, LENGTH_LONG);
+
 
                         byte[] bytes = dp.getData();
                         int[] ints = new int[bytes.length];
@@ -1862,7 +1873,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void run() {
                 System.out.println("Ping recieved");
                 mModel.setCurrentPosAsHome();
-                //mModel.armMotors();
+                mModel.armMotors();
                 //mModel.takePhoto();
 
             }
@@ -1884,7 +1895,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void updateServerMavPort(){
-        helper.updateMavPort(socket.getLocalPort());
+        helper.updateMavDetails(socket.getLocalPort(),(short)mModel.getSystemId());
     }
 
     void restartSockets() {
@@ -1906,6 +1917,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }*/
         }
+    }
+
+    public void showToast(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
 }

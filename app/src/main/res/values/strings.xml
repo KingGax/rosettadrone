@@ -389,4 +389,8 @@
     <string name="uxsdk_icon_flight_mode_ratio" translatable="false">W,1:1</string>
 
 
+    <string name="message_recieved">Message received</string>
+    <string name="message_">Recieved something</string>
+    <string name="message_waiting">Waiting for nav message</string>
+
 </resources>

@@ -70,6 +70,7 @@ import static com.MAVLink.enums.MAV_CMD.MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_VIDEO_START_CAPTURE;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_VIDEO_STOP_CAPTURE;
 import static com.MAVLink.enums.MAV_MISSION_TYPE.MAV_MISSION_TYPE_MISSION;
+import static com.google.android.material.snackbar.BaseTransientBottomBar.LENGTH_LONG;
 import static sq.rogue.rosettadrone.util.TYPE_WAYPOINT_DISTANCE;
 import static sq.rogue.rosettadrone.util.TYPE_WAYPOINT_MAX_ALTITUDE;
 import static sq.rogue.rosettadrone.util.TYPE_WAYPOINT_MAX_SPEED;
@@ -107,6 +108,8 @@ public class MAVLinkReceiver {
     }
 
     public void process(MAVLinkMessage msg) {
+        NotificationHandler.notifySnackbar(parent.findViewById(R.id.snack),
+                R.string.message_recieved, LENGTH_LONG);
 
         // IS 0 is hart beat...
         if (msg.msgid != 0) {
