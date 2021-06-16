@@ -714,26 +714,26 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         try {
             if (ticks % 100 == 0) {
                 send_attitude();//#30
-                send_altitude();
-                send_vibration();
-                send_vfr_hud();//#74
+                //send_altitude();
+                //send_vibration();
+                //send_vfr_hud();//#74
             }
             if (ticks % 200 == 0) {
                 send_global_position_int(); // We use this for the AI se need 5Hz...  #33
             }
             if (ticks % 300 == 0) {
-                send_gps_raw_int();//#24
-                send_radio_status();//#109
-                send_rc_channels();//#65
+                //send_gps_raw_int();//#24
+                //send_radio_status();//#109
+                //send_rc_channels();//#65
             }
             if (ticks % 1000 == 0) {
-                send_heartbeat();//#0
+                //send_heartbeat();//#0
                 send_sys_status();//#1
-                send_power_status();//#125
-                send_battery_status();
+                //send_power_status();//#125
+                //send_battery_status();
             }
             if (ticks % 5000 == 0) {
-                send_home_position();
+                //send_home_position();
             }
 
         } catch (Exception e) {
@@ -1668,6 +1668,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         if (mSafetyEnabled) {
             parent.logMessageDJI(parent.getResources().getString(R.string.safety_launch));
             send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_DENIED);
+            parent.showToast("safety stopping takeoff");
             return;
         }
 
@@ -1676,8 +1677,71 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             parent.logMessageDJI(":rcmode != avtivemode " + rcmode + "   " + avtivemode);
             Log.i(TAG, ":rcmode != avtivemode " + rcmode + "   " + avtivemode);
             send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_DENIED);
+            parent.showToast("rcmode is wrong sotpping takeoff");
             return;
         }
+
+        parent.logMessageDJI("Initiating takeoff");
+        parent.showToast("Initiating takeoff");
+        djiAircraft.getFlightController().startTakeoff(djiError -> {
+            if (djiError != null) {
+                parent.logMessageDJI("Error: " + djiError.toString());
+                //  send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_FAILED);
+                mAirBorn = 1;
+            } else {
+                parent.logMessageDJI("Takeoff successful!\n");
+                send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_ACCEPTED);
+                mAirBorn = 2;
+            }
+            mGCSCommandedMode = NOT_USING_GCS_COMMANDED_MODE;
+        });
+        Log.d(TAG,"Wait for takeoff...");
+        while( mAirBorn == 0) {
+            safeSleep(250);
+        }
+
+        // Check if ok or failed...
+        if(mAirBorn == 1) {
+            Log.d(TAG,"Takeoff failed...");
+            send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_FAILED);
+            parent.showToast("takeoff failed");
+        }
+        else{
+            send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_IN_PROGRESS);
+
+            int timeout = 0;
+
+            // If we took off, wait for command co complete...
+            Log.d(TAG,"Wait for first altitude...");
+            while (m_alt < 1000.0 && timeout < (20*(1/0.250))) {
+                timeout+= 1;
+                safeSleep(250);
+            }
+
+            Log.d(TAG,"Takeoff success...");
+            safeSleep(500);
+            parent.showToast("takeoff success");
+
+            timeout = 0;
+            // If we are airborne, or was airborne from the start...
+            if (m_alt >= 800) {
+                float desired_alt = alt - m_alt;
+                Log.d(TAG, "Climb out...from: "+m_alt+" to: "+desired_alt+" set: "+alt);
+                // Climb out to 99% of requested altitude, however 100% is set, just to avoid deadlock...
+                while (m_alt < desired_alt && timeout < (30*(1/0.250))){
+                    do_set_motion_relative(MAV_CMD_NAV_TAKEOFF, 0, 0, (alt - m_alt) / (float) 1000.0, 0, 0, 0, 0, 0, 0b00011111111000);
+                    timeout+= 1;
+                    safeSleep(250);
+                }
+                Log.d(TAG, "Climb out completed..."+m_alt);
+            }else{
+                Log.d(TAG, "Climb out failed...");
+                parent.showToast("climb failed");
+            }
+        }
+
+
+
 /*
         if (getWaypointMissionOperator().getCurrentState() == WaypointMissionState.READY_TO_EXECUTE) {
             startWaypointMission();
@@ -1742,16 +1806,18 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         }
 
  */
-        if (getWaypointMissionOperator().getCurrentState() == WaypointMissionState.READY_TO_EXECUTE) {
+        /*if (getWaypointMissionOperator().getCurrentState() == WaypointMissionState.READY_TO_EXECUTE) {
             // But how about takeoff....
             startWaypointMission();
             send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_ACCEPTED);
+            parent.showToast("waypoint ready to execute");
         } else {
             FlightControllerState coord = djiAircraft.getFlightController().getState();
             TimeLine.TimeLinetakeOff(coord.getAircraftLocation().getLatitude(), coord.getAircraftLocation().getLongitude(), alt, 0);
             TimeLine.startTimeline();
+            parent.showToast("waypoint not ready to execute");
             Log.d(TAG, "Takeoff started...");
-        }
+        }*/
     }
 
     void do_land() {

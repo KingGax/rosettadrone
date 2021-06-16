@@ -76,7 +76,7 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
 
     }
 
-    public void updateMavDetails(int port,short droneSysID){
+    public void updateMavDetails(short droneSysID){
         if (myID != -1){
             //mavPort = port;
             //mavPort = clientDataListener.getPort();
@@ -205,7 +205,7 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
         int id = Integer.parseInt(message[0]);
         setDataPort(port);
         myID = id;
-        parent.handleIdReceived(id,port);
+        parent.handleIdReceived(id,port,serverAddress);
         registerTimeoutHandler.removeCallbacks(registerTimeoutRunnable);
     }
 

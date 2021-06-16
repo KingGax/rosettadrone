@@ -1888,7 +1888,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
     @Override
-    public void handleIdReceived(int id, int port) {
+    public void handleIdReceived(int id, int port, String serverAddress) {
         //NotificationHandler.notifySnackbar(this.findViewById(R.id.snack),
          //       R.string.connect_success, LENGTH_LONG);
         this.runOnUiThread(new Runnable() {
@@ -1896,7 +1896,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void run() {
                 System.out.println("id recievie");
                 SharedPreferences.Editor editor = prefs.edit();
+
                 editor.putString("pref_telem_port",Integer.toString(port));
+                editor.putString("pref_gcs_ip",serverAddress);
                 editor.commit();
                 restartSockets();
             }
@@ -1905,7 +1907,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void updateServerMavPort(){
-        helper.updateMavDetails(socket.getLocalPort(),(short)mModel.getSystemId());
+        helper.updateMavDetails((short)mModel.getSystemId());
     }
 
     void restartSockets() {

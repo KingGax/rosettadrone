@@ -6,7 +6,7 @@ public interface MultiDroneCallbacks {
     void onStartConnect();
     void onConnectTimeout();
     void handleDataReceived(String data);
-    void handleIdReceived(int id, int port);
+    void handleIdReceived(int id, int port, String serverAddress);
     void receiveMavMessage(MAVLinkMessage msg);
     void showToast(final String msg);
 }
