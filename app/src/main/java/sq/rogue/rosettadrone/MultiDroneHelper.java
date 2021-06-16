@@ -2,6 +2,8 @@ package sq.rogue.rosettadrone;
 
 import android.os.Handler;
 
+import com.MAVLink.Messages.MAVLinkMessage;
+
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
@@ -14,7 +16,7 @@ import multidrone.sharedclasses.UserDroneData;
 import sq.rogue.rosettadrone.shared.Notification;
 import sq.rogue.rosettadrone.shared.NotificationStatus;
 
-public class MultiDroneHelper implements ListenerCallbacks {
+public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbacks {
     private String serverAddress;
     private String username = "test";
     private final String delimeter = ";";
@@ -26,7 +28,9 @@ public class MultiDroneHelper implements ListenerCallbacks {
     int myID = -1;
     private MultiDroneCallbacks parent;
     private boolean isMessageListenerInitialized = false;
+    private boolean isDataListenerInitialized = false;
     private ClientMessageListener clientListener = new ClientMessageListener();
+    private ClientDataListener clientDataListener = new ClientDataListener();
     private Handler registerTimeoutHandler = new Handler();
     private Runnable registerTimeoutRunnable = new Runnable() {
         @Override
@@ -74,7 +78,8 @@ public class MultiDroneHelper implements ListenerCallbacks {
 
     public void updateMavDetails(int port,short droneSysID){
         if (myID != -1){
-            mavPort = port;
+            //mavPort = port;
+            //mavPort = clientDataListener.getPort();
             sysID = droneSysID;
             portResendHandler.post(portResendRunnable);
         }
@@ -160,6 +165,7 @@ public class MultiDroneHelper implements ListenerCallbacks {
 
         parent.onStartConnect();
         startMessageListener();
+        startDataListener();
         setListenerPort(clientListener.getPort());
         notifyServer(NotificationStatus.CONNECTED,username,listenerPort,serverAddress, notificationsPort);
         registerTimeoutHandler.postDelayed(registerTimeoutRunnable, 1000L);
@@ -173,6 +179,16 @@ public class MultiDroneHelper implements ListenerCallbacks {
         Thread clientListenerThread = new Thread(this.clientListener);
         clientListenerThread.start(); // start thread in the background
         this.isMessageListenerInitialized = true;
+    }
+
+    public void startDataListener(){
+        if (isDataListenerInitialized) {
+            return;
+        }
+        clientDataListener.setListenerCallback(this);
+        Thread clientListenerThread = new Thread(this.clientDataListener);
+        clientListenerThread.start(); // start thread in the background
+        this.isDataListenerInitialized = true;
     }
 
     @Override
@@ -190,10 +206,28 @@ public class MultiDroneHelper implements ListenerCallbacks {
         setDataPort(port);
         myID = id;
         parent.handleIdReceived(id,port);
+        registerTimeoutHandler.removeCallbacks(registerTimeoutRunnable);
     }
 
     @Override
     public void handleMavPortAck() {
         portResendHandler.removeCallbacks(portResendRunnable);
+    }
+
+    @Override
+    public void receiveMavMessage(MAVLinkMessage msg) {
+        if (msg != null){
+            parent.receiveMavMessage(msg);
+            parent.showToast("recieved mavMessage");
+        } else{
+            parent.showToast("message not decoded");
+        }
+
+    }
+
+    @Override
+    public void setMavLinkPort(int port) {
+        mavPort = port;
+        parent.showToast(Integer.toString(port));
     }
 }

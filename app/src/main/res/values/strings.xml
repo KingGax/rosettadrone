@@ -392,5 +392,8 @@
     <string name="message_recieved">Message received</string>
     <string name="message_">Recieved something</string>
     <string name="message_waiting">Waiting for nav message</string>
+    <string name="connect_start">Connecting to MultiDrone</string>
+    <string name="connect_success">MultiDrone connection success</string>
+    <string name="connect_timeout">MultiDrone connection timed out</string>
 
 </resources>

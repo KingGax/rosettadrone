@@ -12,6 +12,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView;
 
+import com.MAVLink.Messages.MAVLinkMessage;
+
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
@@ -169,6 +171,11 @@ public class MultiDroneActivity extends AppCompatActivity implements MultiDroneC
                 sendDataThread.start();
             }
         });
+
+    }
+
+    @Override
+    public void receiveMavMessage(MAVLinkMessage msg) {
 
     }
 

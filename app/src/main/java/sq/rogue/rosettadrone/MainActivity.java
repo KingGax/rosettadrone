@@ -1188,6 +1188,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //registerTimeoutHandler.postDelayed(registerTimeoutRunnable, 1000L);
     }
 
+
     public void onSmallMapClick(View v) {
 
         LinearLayout map_layout = findViewById(R.id.map_view);
@@ -1595,12 +1596,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onStartConnect() {
-        System.out.println("start connect");
+        NotificationHandler.notifySnackbar(this.findViewById(R.id.snack),
+                R.string.connect_start, LENGTH_LONG);
     }
 
     @Override
     public void onConnectTimeout() {
-        System.out.println("connect timeout");
+        NotificationHandler.notifySnackbar(this.findViewById(R.id.snack),
+                R.string.connect_timeout, LENGTH_LONG);
+    }
+
+    @Override
+    public void receiveMavMessage(MAVLinkMessage msg) {
+        mMavlinkReceiver.process(msg);
     }
 
 
@@ -1872,7 +1880,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 System.out.println("Ping recieved");
-                mModel.setCurrentPosAsHome();
+                //mModel.setCurrentPosAsHome();
                 mModel.armMotors();
                 //mModel.takePhoto();
 
@@ -1881,6 +1889,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
     @Override
     public void handleIdReceived(int id, int port) {
+        //NotificationHandler.notifySnackbar(this.findViewById(R.id.snack),
+         //       R.string.connect_success, LENGTH_LONG);
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
