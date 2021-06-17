@@ -283,7 +283,7 @@ public class MAVLinkReceiver {
             // This command must be sent at 1Hz minimum...
             case MAVLINK_MSG_ID_MANUAL_CONTROL:
                 msg_manual_control msg_param_5 = (msg_manual_control) msg;
-
+                parent.showToast("Manual stick command received");
                 mModel.do_set_motion_velocity(
                         msg_param_5.x / (float) 100.0,
                         msg_param_5.y / (float) 100.0,

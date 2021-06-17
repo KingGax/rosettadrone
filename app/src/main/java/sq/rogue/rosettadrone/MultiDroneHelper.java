@@ -218,7 +218,7 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
     public void receiveMavMessage(MAVLinkMessage msg) {
         if (msg != null){
             parent.receiveMavMessage(msg);
-            parent.showToast("recieved mavMessage");
+            //parent.showToast("recieved mavMessage");
         } else{
             parent.showToast("message not decoded");
         }

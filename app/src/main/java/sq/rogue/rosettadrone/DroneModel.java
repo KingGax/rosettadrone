@@ -712,13 +712,13 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             return;
 
         try {
-            if (ticks % 100 == 0) {
+            if (ticks % 500 == 0) { //was 100
                 send_attitude();//#30
                 //send_altitude();
                 //send_vibration();
                 //send_vfr_hud();//#74
             }
-            if (ticks % 200 == 0) {
+            if (ticks % 500 == 0) { // was 200
                 send_global_position_int(); // We use this for the AI se need 5Hz...  #33
             }
             if (ticks % 300 == 0) {
@@ -2109,6 +2109,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         // If we use yaw rate...
         if ((mask & 0b0000100000000000) == 0) {
             mYaw = yaw;
+        } else{
+            parent.showToast("yaw not set due to mask?");
         }
         if ((mask & 0b0000000000001000) == 0) {
             mPitch = y;
@@ -2123,6 +2125,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         // Only allow velocity movement in P mode...
         if (rcmode == avtivemode) {
             parent.logMessageDJI(":rcmode != avtivemode " + rcmode + "   " + avtivemode);
+            parent.showToast("rcmode is not active, command rejected");
             Log.i(TAG, ":rcmode != avtivemode " + rcmode + "   " + avtivemode);
             return;
         }
@@ -2137,6 +2140,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
                                     if (djiError != null) {
                                         Log.i(TAG, "Velocity Mode not enabled Error: " + djiError.toString());
                                         parent.logMessageDJI("Velocity Mode not enabled Error: " + djiError.toString());
+                                        parent.showToast("Velocity Mode not enabled Error");
                                     }
                                 }
                         );
