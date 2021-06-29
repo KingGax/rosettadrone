@@ -13,6 +13,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView;
 
 import com.MAVLink.Messages.MAVLinkMessage;
+import com.MAVLink.common.msg_command_long;
+import com.MAVLink.common.msg_manual_control;
+import com.MAVLink.enums.MAV_RESULT;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutput;
@@ -24,6 +27,10 @@ import java.net.InetAddress;
 import multidrone.sharedclasses.UserDroneData;
 import sq.rogue.rosettadrone.shared.Notification;
 import sq.rogue.rosettadrone.shared.NotificationStatus;
+
+import static com.MAVLink.common.msg_command_long.MAVLINK_MSG_ID_COMMAND_LONG;
+import static com.MAVLink.common.msg_manual_control.MAVLINK_MSG_ID_MANUAL_CONTROL;
+import static com.MAVLink.enums.MAV_CMD.MAV_CMD_COMPONENT_ARM_DISARM;
 
 public class MultiDroneActivity extends AppCompatActivity implements MultiDroneCallbacks {
 
@@ -168,15 +175,34 @@ public class MultiDroneActivity extends AppCompatActivity implements MultiDroneC
                 myId = id;
                 myData.id = myId;
                 registerTimeoutHandler.removeCallbacks(registerTimeoutRunnable);
-                sendDataThread.start();
+                if (!sendDataThread.isAlive()){
+                    sendDataThread.start();
+                }
             }
         });
+        helper.updateMavDetails((short)0);
 
     }
 
     @Override
     public void receiveMavMessage(MAVLinkMessage msg) {
-
+        switch (msg.msgid) {
+            case MAVLINK_MSG_ID_COMMAND_LONG:
+                msg_command_long msg_cmd = (msg_command_long) msg;
+                switch (msg_cmd.command) {
+                    case MAV_CMD_COMPONENT_ARM_DISARM:
+                        if (msg_cmd.param1 == 1)
+                            System.out.println("arm");
+                        else
+                            System.out.println("disarm");
+                        break;
+                }
+                break;
+            case MAVLINK_MSG_ID_MANUAL_CONTROL:
+                msg_manual_control msg_param_5 = (msg_manual_control) msg;
+                System.out.println("Stick command: " + msg_param_5.x + " " + msg_param_5.y + " " + msg_param_5.z + " " + msg_param_5.r);
+                break;
+        }
     }
 
     public void showToast(final String msg) {

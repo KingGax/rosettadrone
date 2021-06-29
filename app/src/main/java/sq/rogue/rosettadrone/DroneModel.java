@@ -1102,7 +1102,6 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
     private void send_sys_status() {
         msg_sys_status msg = new msg_sys_status();
-
         //     Log.d(TAG, "Full charge capacity: " + String.valueOf(mCFullChargeCapacity_mAh));
         //     Log.d(TAG, "Charge remaining: " + String.valueOf(mCChargeRemaining_mAh));
         //     Log.d(TAG, "Full charge capacity: " + String.valueOf(mCFullChargeCapacity_mAh));

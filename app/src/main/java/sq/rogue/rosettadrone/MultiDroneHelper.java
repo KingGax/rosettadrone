@@ -139,7 +139,6 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
 
     public void sendData(UserDroneData data) throws Exception{
         if (dataPort != 0){
-            System.out.println("attempting to send data");
             DatagramSocket socket = new DatagramSocket();
             ByteArrayOutputStream bStream = new ByteArrayOutputStream();
             ObjectOutput oo = new ObjectOutputStream(bStream);
@@ -151,7 +150,6 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length, InetAddress.getByName(this.serverAddress), this.dataPort); 																												// paketa
             socket.send(packet);
             socket.close();
-            System.out.println("attempting to send data");
         } else{
             System.out.println("SENDING DATA WITHOUT DATA PORT - bad program");
         }
@@ -229,5 +227,6 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
     public void setMavLinkPort(int port) {
         mavPort = port;
         parent.showToast(Integer.toString(port));
+        System.out.println("set mav port " + port);
     }
 }
