@@ -8,5 +8,9 @@ public class UserDroneData implements java.io.Serializable {
     public float lng;
     public float yaw;
 
+    public float xNED;
+    public float yNED;
+    public float zNED;
+
     public int id;
 }

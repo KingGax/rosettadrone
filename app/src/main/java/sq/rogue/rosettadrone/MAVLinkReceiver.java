@@ -258,6 +258,7 @@ public class MAVLinkReceiver {
 
             case MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT:
                 // This command must be sent every second...
+                System.out.println("Recieved set target command");
                 msg_set_position_target_global_int msg_param_4 = (msg_set_position_target_global_int) msg;
 
                 // If position is set to zero then it must be a velocity command... We should use rather the mask ...

@@ -141,5 +141,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.0-beta01'
 
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.4.21'
+
+    implementation group: 'org.ejml', name: 'ejml-all', version: '0.40'
 }
 

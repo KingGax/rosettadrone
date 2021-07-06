@@ -96,6 +96,8 @@ import dji.sdk.mission.followme.FollowMeMissionOperator;
 import dji.sdk.mission.waypoint.WaypointMissionOperator;
 import dji.sdk.products.Aircraft;
 import dji.sdk.sdkmanager.DJISDKManager;
+import multidrone.controller.DronePIDController;
+import multidrone.coordinates.GlobalRefrencePoint;
 
 import static com.MAVLink.common.msg_set_position_target_global_int.MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_COMPONENT_ARM_DISARM;
@@ -207,9 +209,13 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
     public int mAirBorn = 0;
     int mission_loaded = -1;
 
+    private DronePIDController dronePIDController = new DronePIDController();
+    private GlobalRefrencePoint globalRef;
+
     DroneModel(MainActivity parent, DatagramSocket socket, boolean sim) {
         this.parent = parent;
         this.socket = socket;
+        dronePIDController.initialise();
         initFlightController(sim);
     }
 
@@ -712,13 +718,13 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             return;
 
         try {
-            if (ticks % 500 == 0) { //was 100
+            if (ticks % 200 == 0) { //was 100
                 send_attitude();//#30
                 //send_altitude();
                 //send_vibration();
                 //send_vfr_hud();//#74
             }
-            if (ticks % 500 == 0) { // was 200
+            if (ticks % 200 == 0) { // was 200
                 send_global_position_int(); // We use this for the AI se need 5Hz...  #33
             }
             if (ticks % 300 == 0) {
@@ -727,7 +733,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
                 //send_rc_channels();//#65
             }
             if (ticks % 1000 == 0) {
-                //send_heartbeat();//#0
+                send_heartbeat();//#0
                 send_sys_status();//#1
                 //send_power_status();//#125
                 //send_battery_status();
@@ -1026,6 +1032,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         LocationCoordinate3D coord = djiAircraft.getFlightController().getState().getAircraftLocation();
         msg.lat = (int) (coord.getLatitude() * Math.pow(10, 7));
         msg.lon = (int) (coord.getLongitude() * Math.pow(10, 7));
+
+        //msg.time_boot_ms = System.currentTimeMillis();
 
         // NOTE: Commented out this field, because msg.relative_alt seems to be intended for altitude above the current terrain,
         // but DJI reports altitude above home point.
@@ -1727,7 +1735,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
                 float desired_alt = alt - m_alt;
                 Log.d(TAG, "Climb out...from: "+m_alt+" to: "+desired_alt+" set: "+alt);
                 // Climb out to 99% of requested altitude, however 100% is set, just to avoid deadlock...
-                while (m_alt < desired_alt && timeout < (30*(1/0.250))){
+                while (m_alt < desired_alt && timeout < (10*(1/0.250))){
                     do_set_motion_relative(MAV_CMD_NAV_TAKEOFF, 0, 0, (alt - m_alt) / (float) 1000.0, 0, 0, 0, 0, 0, 0b00011111111000);
                     timeout+= 1;
                     safeSleep(250);
@@ -1928,13 +1936,23 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         m_Destination_Set_vy = vy;
         m_Destination_Set_vz = vz;
         m_Destination_Mask = mask;
+        FlightControllerState coord = djiAircraft.getFlightController().getState();
+        double local_lat = coord.getAircraftLocation().getLatitude();
+        double local_lon = coord.getAircraftLocation().getLongitude();
+        double local_alt = coord.getAircraftLocation().getAltitude();
+
+        if (globalRef == null){
+
+            globalRef = new GlobalRefrencePoint(local_lat,local_lon,local_alt);
+            System.out.println("GLOBAL REF " + globalRef.lat + " " + globalRef.lng);
+            dronePIDController.setGlobalRef(globalRef);
+        }
+        dronePIDController.setTargetCoord((float)Lat,(float)Lon,alt);
+        dronePIDController.setTargetYaw((float)m_Destination_Yaw);
         m_lastCommand = MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT;
 
         //------------------------------------------------
         // To be able to follow a straight line...
-        FlightControllerState coord = djiAircraft.getFlightController().getState();
-        double local_lat = coord.getAircraftLocation().getLatitude();
-        double local_lon = coord.getAircraftLocation().getLongitude();
 
         // Find the bearing to wp... return 0-360 deg.
         m_Destination_brng = getBearingBetweenWaypoints(m_Destination_Lat, m_Destination_Lon, local_lat, local_lon) - 180;
@@ -1945,6 +1963,12 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         Log.i(TAG, "m_Destination_hypotenuse: " + m_Destination_hypotenuse + " m_Destination_brng: " + m_Destination_brng);
 
         do_start_absolute_motion();
+    }
+
+    public void setGlobalRef(GlobalRefrencePoint ref){
+        globalRef = ref;
+        dronePIDController.setGlobalRef(ref);
+
     }
 
     private void do_start_absolute_motion() {
@@ -1960,21 +1984,49 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             // This is a non standard trick, but we would like to know exactly when we have reached the position...
             // So we move to AUTO mode while flying to position, and then go back to GUIDED...
             // If there is another way let me know...
+            if (globalRef == null){
+                globalRef = new GlobalRefrencePoint(m_Latitude,m_Longitude,m_alt);
+            }
             mMoveToDataTask = new MoveTo();
             mMoveToDataTimer = new Timer();
+            mMoveToDataTask.dronePIDController = dronePIDController;
             mMoveToDataTimer.schedule(mMoveToDataTask, 100, 190);
+            mMoveToDataTask.detection = 0;
+            mMoveToDataTask.active = true;
             mAutonomy = true;
         } else {
             mMoveToDataTask.detection = 0;
+            mMoveToDataTask.active = true;
         }
     }
 
     class MoveTo extends TimerTask {
         public int detection = 0;  // Wi might fly past the point so we look for consecutive hits...
+        public DronePIDController dronePIDController;
+        public boolean active = false;
 
         @Override
         public void run() {
-            //          Log.i(TAG, "TimerTask");
+            if (active){
+                FlightControllerState coord = djiAircraft.getFlightController().getState();
+                float local_lat = (float) coord.getAircraftLocation().getLatitude();
+                float local_lon = (float) coord.getAircraftLocation().getLongitude();
+                float height = coord.getAircraftLocation().getAltitude();
+                float yaw = (float) Math.toRadians(coord.getAttitude().yaw);
+                System.out.println("setting lat lng alt yaw :" + local_lat + " " + local_lon + " " + height + " " + yaw);
+                dronePIDController.setPos(local_lat,local_lon,height,yaw);
+                short[] stickOutputs = dronePIDController.getStickOutputs();
+                do_set_motion_velocity(
+                        stickOutputs[0] / (float) 100.0,
+                        stickOutputs[1] / (float) 100.0,
+                        stickOutputs[2] / (float) 260.0,
+                        stickOutputs[3] / (float) 50.0,
+                        0b0000011111000111);
+            }
+
+
+
+        /*    //          Log.i(TAG, "TimerTask");
 
             FlightControllerState coord = djiAircraft.getFlightController().getState();
             double local_lat = coord.getAircraftLocation().getLatitude();
@@ -2084,7 +2136,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
                 do_set_motion_velocity((float) fmove, (float) rmove, (float) upmotion, (float) clockmotion, 0b1111011111000111);
 //                do_set_motion_velocity((float) fwmotion, (float) rightmotion, (float) upmotion, (float) clockmotion, 0b1111011111000111);
-            }
+            }*/
+
         }
     }
 

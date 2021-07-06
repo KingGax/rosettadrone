@@ -1794,6 +1794,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             close();
 
             String gcsIPString = "127.0.0.1";
+            System.out.println("creating tel sockets");
 
             if (mainActivityWeakReference.get().prefs.getBoolean("pref_external_gcs", false))
                 gcsIPString = mainActivityWeakReference.get().prefs.getString("pref_gcs_ip", "127.0.0.1");
@@ -1900,6 +1901,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 editor.putString("pref_telem_port",Integer.toString(port));
                 editor.putString("pref_gcs_ip",serverAddress);
                 editor.commit();
+                updateServerMavPort();
                 restartSockets();
             }
         });
