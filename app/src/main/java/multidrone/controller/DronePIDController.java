@@ -74,6 +74,13 @@ public class DronePIDController {
         targetCoord = CoordinateTranslator.GeodeticToNED(targetGEO,globalRef);
     }
 
+    public void resetPIDController() {
+        xController.resetPID();
+        yController.resetPID();
+        zController.resetPID();
+        yawController.resetPID();
+    }
+
     public void setPos(float lat, float lng, float alt, float yaw){
         GeodeticCoordinate droneGEO = new GeodeticCoordinate(lat,lng,alt);
         BodyCoordinate droneCoord = CoordinateTranslator.GeodeticToBody(new GeodeticCoordinate(droneGEO.lat,droneGEO.lng,droneGEO.height),globalRef,yaw);

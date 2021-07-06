@@ -1897,15 +1897,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void run() {
                 System.out.println("id recievie");
                 SharedPreferences.Editor editor = prefs.edit();
-
+                editor.putBoolean("pref_external_gcs",true);
                 editor.putString("pref_telem_port",Integer.toString(port));
                 editor.putString("pref_gcs_ip",serverAddress);
                 editor.commit();
+                NotificationHandler.notifySnackbar(findViewById(R.id.snack),
+                        R.string.connect_success, LENGTH_LONG);
                 updateServerMavPort();
                 restartSockets();
             }
         });
 
+    }
+
+    public void disablePIDController(){
+        mModel.disablePIDController();
     }
 
     public void updateServerMavPort(){

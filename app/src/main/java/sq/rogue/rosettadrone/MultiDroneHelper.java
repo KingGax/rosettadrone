@@ -44,7 +44,7 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
         @Override
         public void run() {
             sendMavDetails(myID,mavPort,serverAddress,notificationsPort,sysID);
-            portResendHandler.postDelayed(portResendRunnable,1000L);
+            portResendHandler.postDelayed(portResendRunnable,5000L);
         }
     };
 

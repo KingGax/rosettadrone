@@ -55,7 +55,8 @@
 
         <activity
             android:name="sq.rogue.rosettadrone.ConnectionActivity"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop"
+            android:screenOrientation="landscape">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -73,6 +74,7 @@
         <activity android:name="sq.rogue.rosettadrone.MainActivity">
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED" />
+
             </intent-filter>
         </activity>
 

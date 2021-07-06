@@ -34,6 +34,15 @@ public abstract class PIDOneVarController {
         wD = _wD;
     }
 
+    public void resetPID(){
+        error = 0;
+        lastError = 0;
+        ref = 0;
+        state = 0;
+        Isum = 0;
+
+    }
+
     protected void wipeIntegral(){
         Isum = 0;
     }

@@ -1997,6 +1997,20 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         } else {
             mMoveToDataTask.detection = 0;
             mMoveToDataTask.active = true;
+            mMoveToDataTask.dronePIDController.setStartTime();
+        }
+    }
+
+    public void resetPIDController(){
+        if (mMoveToDataTask != null){
+            mMoveToDataTask.dronePIDController.resetPIDController();
+        }
+    }
+
+    public void disablePIDController(){
+        if (mMoveToDataTask != null){
+            mMoveToDataTask.active = false;
+            resetPIDController();
         }
     }
 
