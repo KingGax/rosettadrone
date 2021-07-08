@@ -191,6 +191,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ClientMessageListener clientListener = new ClientMessageListener();
 
     private MultiDroneHelper helper = new MultiDroneHelper(this);
+    private KeyframeTransmitter keyframeTransmitter = new KeyframeTransmitter("192.168.1.50", 4444);
 
     boolean connectingToMultiDrone = false;
     boolean connectedToMultiDrone = false;
@@ -293,6 +294,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             } else {
                 mService.setDualVideo(false);
             }
+            //mService.setKeyframeTransmitter(new KeyframeTransmitter("192.168.1.50",44444));
         }
 
         @Override
@@ -643,6 +645,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Handler mTimerHandler = new Handler(Looper.getMainLooper());
         mTimerHandler.postDelayed(enablesafety, 3000);
         //--------------------------------------------------------------
+        //auto connect multidrone
+        //onStartMultidrone();
     }
 
     // Start the AI Pluggin (Developed by the customers...)
@@ -1179,6 +1183,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         helper.startRegister(serverAddress);
         System.out.println("notif:" + notificationsPort);
         System.out.println("ip:" + serverAddress);
+
+
 
         //int telemIPPort = Integer.parseInt(Objects.requireNonNull(mainActivityWeakReference.get().prefs.getString("pref_telem_port", "14550")));
         //serverAddress = editTextAddress.getText().toString();
@@ -1719,8 +1725,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             counter = 0;
                         }
                         mainActivityWeakReference.get().socket.receive(dp);
-                        NotificationHandler.notifySnackbar(mainActivityWeakReference.get().findViewById(R.id.snack),
-                                R.string.message_, LENGTH_LONG);
+                        /*NotificationHandler.notifySnackbar(mainActivityWeakReference.get().findViewById(R.id.snack),
+                                R.string.message_, LENGTH_LONG);*/
 
 
                         byte[] bytes = dp.getData();
@@ -1728,22 +1734,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         for (int i = 0; i < bytes.length; i++)
                             ints[i] = bytes[i] & 0xff;
 
-                        for (int i = 0; i < bytes.length; i++) {
-                            MAVLinkPacket packet = mainActivityWeakReference.get().mMavlinkParser.mavlink_parse_char(ints[i]);
+                        MAVLinkPacket tempPacket = decodePacket(bytes,bytes[1] & 0xff);
+                        if (tempPacket != null){
+                            MAVLinkMessage msg = tempPacket.unpack();
+                            mainActivityWeakReference.get().mMavlinkReceiver.process(msg);
+                            System.out.println("successful decode!");
+                        } else {
+                            for (int i = 0; i < bytes.length; i++) {
+                                MAVLinkPacket packet = mainActivityWeakReference.get().mMavlinkParser.mavlink_parse_char(ints[i]);
 
-                            if (packet != null) {
-                                MAVLinkMessage msg = packet.unpack();
-                                if (mainActivityWeakReference.get().prefs.getBoolean("pref_log_mavlink", false))
-                                    mainActivityWeakReference.get().logMessageFromGCS(msg.toString());
-                                mainActivityWeakReference.get().mMavlinkReceiver.process(msg);
+                                if (packet != null) {
+                                    System.out.println("packet recieved");
+                                    MAVLinkMessage msg = packet.unpack();
+                                    if (mainActivityWeakReference.get().prefs.getBoolean("pref_log_mavlink", false))
+                                        mainActivityWeakReference.get().logMessageFromGCS(msg.toString());
+                                    mainActivityWeakReference.get().mMavlinkReceiver.process(msg);
+                                }
                             }
                         }
+                        System.out.println("failed trying to decode packet");
                     } catch (IOException e) {
+                        //e.printStackTrace();
                         //logMessageDJI("IOException: " + e.toString());
                     }
                 }
 
             } catch (Exception e) {
+                //e.printStackTrace();
                 Log.d(TAG, "exception", e);
             } finally {
                 if (mainActivityWeakReference.get().socket.isConnected()) {
@@ -1757,6 +1774,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
             return 0;
         }
+
+        private MAVLinkPacket decodePacket(byte[] buffer, int payloadSize) {
+            MAVLinkPacket pack = new MAVLinkPacket(payloadSize);
+            pack.seq = buffer[2] & 0xff;
+            pack.sysid = buffer[3] & 0xff;
+            pack.compid = buffer[4] & 0xff;
+            pack.msgid = buffer[5] & 0xff;
+
+            //buffer[0] = (byte) MAVLINK_STX;
+            //buffer[1] = (byte) len;
+            //buffer[2] = (byte) seq;
+            //buffer[3] = (byte) sysid;
+            //buffer[4] = (byte) compid;
+            //buffer[5] = (byte) msgid;
+
+            for (int j = 0; j < payloadSize; j++) {
+                pack.payload.payload.put(buffer[6 + j]);
+            }
+            return pack;
+            //generateCRC();
+            //buffer[i++] = (byte) (crc.getLSB());
+            //buffer[i++] = (byte) (crc.getMSB());
+            //return buffer;
+        }
+
 
         @Override
         protected void onPostExecute(Integer integer) {

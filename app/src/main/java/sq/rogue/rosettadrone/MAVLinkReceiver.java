@@ -262,25 +262,30 @@ public class MAVLinkReceiver {
                 System.out.println("Recieved set target command");
                 disablePIDController = false;
                 msg_set_position_target_global_int msg_param_4 = (msg_set_position_target_global_int) msg;
-
-                // If position is set to zero then it must be a velocity command... We should use rather the mask ...
-                if (((msg_param_4.type_mask & 0b0000100000000111) == 0x007)) {  // If no move and we use yaw rate...
-                    mModel.mAutonomy = false;
-                    mModel.do_set_motion_velocity_NED(msg_param_4.vx, msg_param_4.vy, msg_param_4.vz, (float) Math.toDegrees(msg_param_4.yaw_rate), msg_param_4.type_mask);
-                    mModel.send_command_ack(MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT, MAV_RESULT.MAV_RESULT_ACCEPTED);
-                } else {
-                    mModel.send_command_ack(MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT, MAV_RESULT.MAV_RESULT_IN_PROGRESS);
-                    mModel.do_set_motion_absolute(
-                            (double) msg_param_4.lat_int / 10000000,
-                            (double) msg_param_4.lon_int / 10000000,
-                            msg_param_4.alt,
-                            msg_param_4.yaw,
-                            msg_param_4.vx,
-                            msg_param_4.vy,
-                            msg_param_4.vz,
-                            msg_param_4.yaw_rate,
-                            msg_param_4.type_mask);
+                System.out.println("SYSIDS " + msg_param_4.target_system + " " + mModel.getSystemId());
+                if (msg_param_4.target_system == mModel.getSystemId()){
+                    System.out.println("accepted set target command");
+                    // If position is set to zero then it must be a velocity command... We should use rather the mask ...
+                    if (((msg_param_4.type_mask & 0b0000100000000111) == 0x007)) {  // If no move and we use yaw rate...
+                        mModel.mAutonomy = false;
+                        mModel.do_set_motion_velocity_NED(msg_param_4.vx, msg_param_4.vy, msg_param_4.vz, (float) Math.toDegrees(msg_param_4.yaw_rate), msg_param_4.type_mask);
+                        mModel.send_command_ack(MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT, MAV_RESULT.MAV_RESULT_ACCEPTED);
+                    } else {
+                        mModel.send_command_ack(MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT, MAV_RESULT.MAV_RESULT_IN_PROGRESS);
+                        mModel.do_set_motion_absolute(
+                                (double) msg_param_4.lat_int / 10000000,
+                                (double) msg_param_4.lon_int / 10000000,
+                                msg_param_4.alt,
+                                msg_param_4.yaw,
+                                msg_param_4.vx,
+                                msg_param_4.vy,
+                                msg_param_4.vz,
+                                msg_param_4.yaw_rate,
+                                msg_param_4.type_mask);
+                    }
                 }
+
+
                 break;
 
             // This command must be sent at 1Hz minimum...
@@ -499,6 +504,7 @@ public class MAVLinkReceiver {
                 break;
         }
         if (disablePIDController){
+            System.out.println("Turning controller off! Message " + msg.msgid);
             parent.disablePIDController();
         }
     }

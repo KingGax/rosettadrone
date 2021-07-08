@@ -311,12 +311,12 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
         // If this is the first time the app is running...
         if(pos.getLatitude() == -1){
-            sharedPreferences.getStringSet("pref_sim_pos_lat", Collections.singleton("60.4094"));
-            pos.setLatitude(60.4094);
+            sharedPreferences.getStringSet("pref_sim_pos_lat", Collections.singleton("51.4234559"));
+            pos.setLatitude(51.4234559);
         }
         if(pos.getLongitude() == -1){
-            sharedPreferences.getStringSet("pref_sim_pos_lon", Collections.singleton("10.4911"));
-            pos.setLongitude(10.4911);
+            sharedPreferences.getStringSet("pref_sim_pos_lon", Collections.singleton("-2.6713971"));
+            pos.setLongitude(-2.6713971);
         }
         if(pos.getAltitude() == -1){  // Not Used...
             sharedPreferences.getStringSet("pref_sim_pos_alt", Collections.singleton("210.0"));
@@ -1973,7 +1973,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
     private void do_start_absolute_motion() {
         //    Log.i(TAG, "do_start_absolute_motion");
-
+        System.out.println("Turning controller on!");
         // Start a task to do the job... if not already running...
         if (mMoveToDataTimer == null) {
             parent.logMessageDJI("Starting new thread!");

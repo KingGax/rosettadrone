@@ -70,12 +70,12 @@ v
             android:title="Sim Settings">
 
             <androidx.preference.EditTextPreference
-                android:defaultValue="60.4094"
+                android:defaultValue="51.423475"
                 android:key="pref_sim_pos_lat"
                 android:title="@string/pref_sim_pos_lat" />
 
             <androidx.preference.EditTextPreference
-                android:defaultValue="10.4911"
+                android:defaultValue="-2.6713595"
                 android:key="pref_sim_pos_lon"
                 android:title="@string/pref_sim_pos_lon" />
 

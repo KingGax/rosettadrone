@@ -6,6 +6,8 @@ package sq.rogue.rosettadrone.video;
 
 import android.util.Log;
 
+import sq.rogue.rosettadrone.KeyframeTransmitter;
+
 /**
  * A helper class to invoke native methods
  */
@@ -13,11 +15,15 @@ public class NativeHelper {
 
     public static final String TAG = NativeHelper.class.getSimpleName();
     private static NativeHelper instance;
+    private int framesSinceSend = 0;
+    private int framesBetweenSends = 30;
 
     static {
         System.loadLibrary("ffmpeg");
         System.loadLibrary("djivideojni");
     }
+
+    private KeyframeTransmitter kft;
 
     private NativeDataListener dataListener;
     //JNI
@@ -35,6 +41,10 @@ public class NativeHelper {
 
     public void setDataListener(NativeDataListener dataListener) {
         this.dataListener = dataListener;
+    }
+
+    public void setKft(KeyframeTransmitter kft) {
+        this.kft = kft;
     }
 
     /**
@@ -81,7 +91,17 @@ public class NativeHelper {
     public void onFrameDataRecv(byte[] buf, int size, int frameNum, boolean isKeyFrame, int width, int height) {
         if (dataListener != null) {
             dataListener.onDataRecv(buf, size, frameNum, isKeyFrame, width, height);
+            //System.out.println("frame " + frameNum + " size: " + size + " " + (isKeyFrame?"KEYFRAME":""));
         }
+        if (kft != null){//define a keyframe as between 100-250MB
+            if (!kft.isDataSending() && framesBetweenSends < framesSinceSend && (size > 100_000 && size < 250_000)){
+                if (kft.trySetDataToSend(buf,size)){
+                    framesSinceSend=0;
+                    System.out.println("Started send!  size:" + size);
+                }
+            }
+        }
+        framesSinceSend++;
     }
 
     public interface NativeDataListener {

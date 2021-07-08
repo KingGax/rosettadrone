@@ -25,9 +25,7 @@ import java.util.Arrays;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
-import sq.rogue.rosettadrone.KeyframeTransmitter;
-
-public class VideoService extends Service implements NativeHelper.NativeDataListener {
+public class KeyframeService extends Service implements NativeHelper.NativeDataListener {
 
     private static final String TAG = VideoService.class.getSimpleName();
     protected H264Packetizer mPacketizer;
@@ -41,9 +39,6 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
     private int mvideoPort = 5600;
     private int mvideoBitrate = 3000;
     private int mencodeSpeed = 2;
-
-    private KeyframeTransmitter keyframeTransmitter;
-    private Thread keyframeThread;
 
     @Override
     public void onCreate() {
@@ -63,8 +58,8 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
     }
 
     public class LocalBinder extends Binder {
-        public VideoService getInstance() {
-            return VideoService.this;
+        public KeyframeService getInstance() {
+            return KeyframeService.this;
         }
     }
 
@@ -93,15 +88,6 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
         mvideoBitrate = videoBitrate;
         mencodeSpeed = encodeSpeed;
         initPacketizer(mip, mvideoPort, mvideoBitrate, mencodeSpeed);
-    }
-
-    public void setKeyframeTransmitter(KeyframeTransmitter kft){
-        if (keyframeThread == null){
-            keyframeTransmitter = kft;
-            keyframeThread = new Thread(keyframeTransmitter);
-            NativeHelper.getInstance().setKft(keyframeTransmitter);
-            keyframeThread.start();
-        }
     }
 
     public void setDualVideo(boolean dualVideo) {
@@ -140,7 +126,7 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
     }
 
     // --------------------------------------------------------------------------------------------
-    public void splitNALs(byte[] buffer) {
+    /*public void splitNALs(byte[] buffer) {
         // One H264 frame can contain multiple NALs
         int packet_start_idx = 0;
         int packet_end_idx = 0;
@@ -160,15 +146,15 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
         packet_end_idx = buffer.length;
         byte[] packet = Arrays.copyOfRange(buffer, packet_start_idx, packet_end_idx);
         sendNAL(packet);
-    }
+    }*/
 
-    protected void sendNAL(byte[] buffer) {
+    /*protected void sendNAL(byte[] buffer) {
         // Pack a single NAL for RTP and send
         if (mPacketizer != null) {
             mPacketizer.setInputStream(new ByteArrayInputStream(buffer));
             mPacketizer.run();
         }
-    }
+    }*/
 
     //---------------------------------------------------------------------------------------
     @Override
@@ -176,7 +162,7 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
         if (size > 0 && isRunning) {
             // Pack the raw H.264 stream...
             try {
-                splitNALs(data);
+                //splitNALs(data);
             } catch (Exception e){
                 Log.d("VideoService",Log.getStackTraceString(e));
             }
