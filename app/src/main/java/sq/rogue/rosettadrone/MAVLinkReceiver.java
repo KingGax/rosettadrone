@@ -10,19 +10,16 @@ import com.MAVLink.common.msg_mission_count;
 import com.MAVLink.common.msg_mission_item;
 import com.MAVLink.common.msg_mission_item_int;
 import com.MAVLink.common.msg_mission_request;
-import com.MAVLink.common.msg_mission_request_int;
 import com.MAVLink.common.msg_param_request_read;
 import com.MAVLink.common.msg_param_set;
 import com.MAVLink.common.msg_set_mode;
 import com.MAVLink.common.msg_set_position_target_global_int;
 import com.MAVLink.common.msg_set_position_target_local_ned;
 import com.MAVLink.enums.MAV_CMD;
-import com.MAVLink.enums.MAV_MISSION_TYPE;
 import com.MAVLink.enums.MAV_RESULT;
 
 import java.util.ArrayList;
 
-import dji.common.flightcontroller.FlightControllerState;
 import dji.common.mission.waypoint.Waypoint;
 import dji.common.mission.waypoint.WaypointAction;
 import dji.common.mission.waypoint.WaypointActionType;
@@ -56,6 +53,7 @@ import static com.MAVLink.enums.MAV_CMD.MAV_CMD_COMPONENT_ARM_DISARM;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_CONDITION_YAW;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_DIGICAM_CONTROL;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_JUMP;
+import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_PAUSE_CONTINUE;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_HOME;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_MODE;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_SERVO;
@@ -118,11 +116,11 @@ public class MAVLinkReceiver {
             //          Log.d(TAG, String.valueOf(msg));
             //       Log.d(TAG, String.valueOf(msg.msgid));
         }
-        boolean disablePIDController = true;
+        boolean deactivatePIDController = true;
         switch (msg.msgid) {
             case MAVLINK_MSG_ID_HEARTBEAT:
                 this.mTimeStampLastGCSHeartbeat = System.currentTimeMillis();
-                disablePIDController = false;
+                deactivatePIDController = false;
                 break;
 
             case MAVLINK_MSG_ID_COMMAND_LONG:
@@ -150,6 +148,20 @@ public class MAVLinkReceiver {
                         break;
                     case MAV_CMD_NAV_LOITER_UNLIM:
                         //                     mModel.set_flight_mode(ATTI);
+                        break;
+                    case MAV_CMD_DO_PAUSE_CONTINUE:
+                        deactivatePIDController=false;
+                        if (msg_cmd.param1 == 0){
+                            mModel.disable_pid_controller();
+                            mModel.do_set_motion_velocity(
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0b0000011111000111);
+                        } else if (msg_cmd.param1 == 1){
+                            mModel.enable_pid_controller();
+                        }
                         break;
                     case MAV_CMD_NAV_TAKEOFF:
                         Log.d(TAG, "ALT = " + msg_cmd.param7);
@@ -260,7 +272,7 @@ public class MAVLinkReceiver {
             case MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT:
                 // This command must be sent every second...
                 System.out.println("Recieved set target command");
-                disablePIDController = false;
+                deactivatePIDController = false;
                 msg_set_position_target_global_int msg_param_4 = (msg_set_position_target_global_int) msg;
                 System.out.println("SYSIDS " + msg_param_4.target_system + " " + mModel.getSystemId());
                 if (msg_param_4.target_system == mModel.getSystemId()){
@@ -503,9 +515,9 @@ public class MAVLinkReceiver {
                 }
                 break;
         }
-        if (disablePIDController){
+        if (deactivatePIDController){
             System.out.println("Turning controller off! Message " + msg.msgid);
-            parent.disablePIDController();
+            parent.deactivatePIDController();
         }
     }
 

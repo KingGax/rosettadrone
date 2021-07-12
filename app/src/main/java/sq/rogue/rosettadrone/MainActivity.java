@@ -101,7 +101,6 @@ import sq.rogue.rosettadrone.logs.LogFragment;
 import sq.rogue.rosettadrone.settings.SettingsActivity;
 import sq.rogue.rosettadrone.settings.Waypoint1Activity;
 import sq.rogue.rosettadrone.settings.Waypoint2Activity;
-import sq.rogue.rosettadrone.shared.NotificationStatus;
 import sq.rogue.rosettadrone.video.NativeHelper;
 import sq.rogue.rosettadrone.video.VideoService;
 
@@ -1952,8 +1951,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-    public void disablePIDController(){
-        mModel.disablePIDController();
+    public void deactivatePIDController(){
+        mModel.deactivatePIDController();
     }
 
     public void updateServerMavPort(){

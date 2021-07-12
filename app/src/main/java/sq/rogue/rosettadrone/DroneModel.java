@@ -25,6 +25,8 @@ import com.MAVLink.common.msg_mission_item_reached;
 import com.MAVLink.common.msg_mission_request;
 import com.MAVLink.common.msg_mission_request_int;
 import com.MAVLink.common.msg_mission_request_list;
+import com.MAVLink.common.msg_named_value_float;
+import com.MAVLink.common.msg_named_value_int;
 import com.MAVLink.common.msg_param_value;
 import com.MAVLink.common.msg_power_status;
 import com.MAVLink.common.msg_radio_status;
@@ -86,6 +88,7 @@ import dji.common.mission.waypoint.WaypointMission;
 import dji.common.mission.waypoint.WaypointMissionState;
 import dji.common.model.LocationCoordinate2D;
 import dji.common.product.Model;
+import dji.common.remotecontroller.BatteryState;
 import dji.common.remotecontroller.HardwareState;
 import dji.common.util.CommonCallbacks;
 import dji.sdk.battery.Battery;
@@ -211,6 +214,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
     private DronePIDController dronePIDController = new DronePIDController();
     private GlobalRefrencePoint globalRef;
+    private int rcBatteryCounter = 0;
+    private int rcBatteryCountMax = 50;
 
     DroneModel(MainActivity parent, DatagramSocket socket, boolean sim) {
         this.parent = parent;
@@ -714,9 +719,14 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
     void tick() { // Called ever 100ms...
         ticks += 100;
 
+
+
         if (djiAircraft == null)
             return;
 
+        if (ticks % 10000 == 0) {
+            System.out.println("it's tick tock time");
+        }
         try {
             if (ticks % 200 == 0) { //was 100
                 send_attitude();//#30
@@ -727,8 +737,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             if (ticks % 200 == 0) { // was 200
                 send_global_position_int(); // We use this for the AI se need 5Hz...  #33
             }
-            if (ticks % 300 == 0) {
-                //send_gps_raw_int();//#24
+            if (ticks % 800 == 0) { // was 300
+                send_gps_raw_int();//#24
                 //send_radio_status();//#109
                 //send_rc_channels();//#65
             }
@@ -736,9 +746,13 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
                 send_heartbeat();//#0
                 send_sys_status();//#1
                 //send_power_status();//#125
+
+
+
                 //send_battery_status();
             }
             if (ticks % 5000 == 0) {
+                send_named_RCBattery();
                 //send_home_position();
             }
 
@@ -793,8 +807,11 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
     }
 
     public void sendMessage(MAVLinkMessage msg) {
-        if (socket == null)
+        if (socket == null){
+            System.out.println("NULL SOCKET");
             return;
+        }
+
 
         MAVLinkPacket packet = msg.pack();
 
@@ -824,9 +841,10 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 //                parent.logMessageToGCS(msg.toString());
 
         } catch (PortUnreachableException ignored) {
-
+            System.out.println("PORT UNREACHABLE");
         } catch (IOException e) {
-
+            System.out.println("IO EXCEPTION");
+            e.printStackTrace();
         }
     }
 
@@ -1236,6 +1254,13 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         // msg.approach_x = 0;
         // msg.approach_y = 0;
         // msg.approach_z = 0;
+        sendMessage(msg);
+    }
+
+    void send_named_RCBattery(){
+        msg_named_value_int msg = new msg_named_value_int();
+        msg.name = new byte[] {'R'};
+        msg.value = mControllerVoltage_pr;
         sendMessage(msg);
     }
 
@@ -1831,14 +1856,40 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         mAutonomy = false;
         parent.logMessageDJI("Initiating landing");
         djiAircraft.getFlightController().startLanding(djiError -> {
-            if (djiError != null)
+            if (djiError != null){
                 parent.logMessageDJI("Error: " + djiError.toString());
-            else {
-                parent.logMessageDJI("Landing successful!\n");
-                mMotorsArmed = false;
+                System.out.println("Landing Error: " + djiError.toString());
             }
-            mAirBorn = 0;
+            else {
+                int timeout = 0;
+                while (!djiAircraft.getFlightController().getState().isLandingConfirmationNeeded() && timeout < 15_000){
+                    timeout += 100;
+                    safeSleep(100);
+                }
+                if (djiAircraft.getFlightController().getState().isLandingConfirmationNeeded()){
+                    djiAircraft.getFlightController().confirmLanding(djiConfirmError -> {
+                        if (djiConfirmError != null) {
+                            parent.logMessageDJI("Error: " + djiConfirmError.toString());
+                            System.out.println("Confirming Error: " + djiConfirmError.toString());
+                        }
+                        else {
+                            parent.logMessageDJI("Landing confirmed!\n");
+                            System.out.println("Confirm confirmed: ");
+                            parent.logMessageDJI("Landing successful!\n");
+                            mMotorsArmed = false;
+                            mAirBorn = 0;
+                        }
+                    });
+
+                } else{
+                    System.out.println("Landing timed out ");
+                }
+
+            }
+
         });
+
+
     }
 
     void do_go_home() {
@@ -2007,7 +2058,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         }
     }
 
-    public void disablePIDController(){
+    public void deactivatePIDController(){
         if (mMoveToDataTask != null){
             mMoveToDataTask.active = false;
             resetPIDController();
@@ -2018,10 +2069,19 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         public int detection = 0;  // Wi might fly past the point so we look for consecutive hits...
         public DronePIDController dronePIDController;
         public boolean active = false;
+        public boolean enabled = true;
+
+        public void disable(){
+            enabled = false;
+        }
+
+        public void enable(){
+            enabled = true;
+        }
 
         @Override
         public void run() {
-            if (active){
+            if (active && enabled){
                 FlightControllerState coord = djiAircraft.getFlightController().getState();
                 float local_lat = (float) coord.getAircraftLocation().getLatitude();
                 float local_lon = (float) coord.getAircraftLocation().getLongitude();
@@ -2622,5 +2682,18 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
         parent.logMessageDJI("Was: lat " + lat + " lon " + lon + " newlat " + newlat + " newlon " + newlon);
         return new double[]{newlat, newlon};
+    }
+
+    public void disable_pid_controller(){
+        if (mMoveToDataTask != null){
+            mMoveToDataTask.disable();
+        }
+    }
+
+    public void enable_pid_controller(){
+        if (mMoveToDataTask != null){
+            mMoveToDataTask.enable();
+        }
+
     }
 }
