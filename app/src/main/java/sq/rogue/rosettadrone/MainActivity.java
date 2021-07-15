@@ -628,6 +628,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 connectedDrawable = getResources().getDrawable(R.drawable.ic_lock_open_black_24dp, null);
                 mBtnSafety.setBackground(connectedDrawable);
                 findViewById(R.id.Takeoff).setVisibility(View.VISIBLE);
+                if (!connectedToMultiDrone){
+                    onStartMultidrone();
+                }
             }
             mModel.setSafetyEnabled(stat);
             NotificationHandler.notifySnackbar(findViewById(R.id.snack),
@@ -1944,6 +1947,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 editor.commit();
                 NotificationHandler.notifySnackbar(findViewById(R.id.snack),
                         R.string.connect_success, LENGTH_LONG);
+                connectedToMultiDrone = true;
                 updateServerMavPort();
                 restartSockets();
             }

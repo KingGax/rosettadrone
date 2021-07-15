@@ -32,12 +32,14 @@ public class DronePIDController {
     private float zIntegralWipeDist = 5;
 
     private PIDControllerYaw yawController = new PIDControllerYaw();
-    private float yawWP = 1200;
+    private float yawWP = 2400;
     private float yawWI = 0;
-    private float yawWD = 80_000;
+    private float yawWD = 120_000;
     private float yawIntegralWipeDist = 10;
 
     private float targetYaw;
+    private boolean useRoiForYaw = false;
+    private NEDCoordinate roi;
 
     NEDCoordinate droneLoc;
 
@@ -68,6 +70,15 @@ public class DronePIDController {
     public void setTargetYaw(float yaw){
         targetYaw = yaw;
     }
+    public void setROI(float lat, float lng, float alt){
+        GeodeticCoordinate roiGEO = new GeodeticCoordinate(lat,lng,alt);
+        roi = CoordinateTranslator.GeodeticToNED(roiGEO,globalRef);
+        useRoiForYaw = true;
+    }
+
+    public void removeROI(){
+        useRoiForYaw = false;
+    }
 
     public void setTargetCoord(float lat, float lng, float alt){
         GeodeticCoordinate targetGEO = new GeodeticCoordinate(lat,lng,alt);
@@ -90,7 +101,29 @@ public class DronePIDController {
         xController.updateStateAndRef((float)droneCoord.x,System.currentTimeMillis(),(float)droneTarget.x);
         yController.updateStateAndRef((float)droneCoord.y,System.currentTimeMillis(),(float)droneTarget.y);
         zController.updateStateAndRef((float)droneCoord.z,System.currentTimeMillis(),(float)droneTarget.z);
-        yawController.updateStateAndRef(yaw,System.currentTimeMillis(),targetYaw);
+        if (useRoiForYaw){
+            yawController.updateStateAndRef(yaw,System.currentTimeMillis(),getTargetYaw(droneLocation.x,droneLocation.y,roi.x,roi.y));
+
+            System.out.println("using ROI targ yaw " + getTargetYaw(droneLocation.x,droneLocation.y,roi.x,roi.y));
+        } else{
+            yawController.updateStateAndRef(yaw,System.currentTimeMillis(),targetYaw);
+        }
+    }
+
+    private float getTargetYaw(double x, double y, double targX, double targY){
+        double yaw = Math.atan2((targX - x),(targY - y)) - Math.PI/2;
+        if (yaw < -Math.PI){
+            yaw += Math.PI * 2;
+        }
+        return (float)-yaw;
+    }
+    public float getCameraPitch(){
+        if (useRoiForYaw){
+            return (float) -Math.toDegrees(Math.atan2(roi.z-droneLoc.z,Math.sqrt(Math.pow(roi.x-droneLoc.x,2) + Math.pow(roi.y-droneLoc.y,2))));
+        } else{
+            return 0;
+        }
+
     }
 
     public void setStartTime(){
@@ -106,12 +139,12 @@ public class DronePIDController {
         float zStick = zController.getOutput();
         float yawStick = yawController.getOutput();
         System.out.println("sticks xyzr: " + (short)xStick + " " + (short)yStick + " " + (short)zStick + " " + (short)yawStick);
-        System.out.println("Xerrors  P D I : " + xController.error * xWP + " " + xController.getDifferential() * xWD + " " + xController.Isum * xWI);
-        System.out.println("Yerrors  P D I : " + yController.error * yWP + " " + yController.getDifferential() * yWD + " " + yController.Isum * yWI);
-        System.out.println("Zerrors P D I : " + zController.error * zWP + " " + zController.getDifferential() * zWD + " " + zController.Isum * zWI);
-        System.out.println("Yawerrors P D I : " + yawController.error * yawWP + " " + yawController.getDifferential() * yawWD + " " + yawController.Isum * yawWI);
-        System.out.println("drone xyz: " + droneLoc.x + " " + droneLoc.y + " " + droneLoc.z);
-        System.out.println("target xyz: " + targetCoord.x + " " + targetCoord.y + " " + targetCoord.z);
+        //System.out.println("Xerrors  P D I : " + xController.error * xWP + " " + xController.getDifferential() * xWD + " " + xController.Isum * xWI);
+        //System.out.println("Yerrors  P D I : " + yController.error * yWP + " " + yController.getDifferential() * yWD + " " + yController.Isum * yWI);
+        //System.out.println("Zerrors P D I : " + zController.error * zWP + " " + zController.getDifferential() * zWD + " " + zController.Isum * zWI);
+        //System.out.println("Yawerrors P D I : " + yawController.error * yawWP + " " + yawController.getDifferential() * yawWD + " " + yawController.Isum * yawWI);
+        //System.out.println("drone xyz: " + droneLoc.x + " " + droneLoc.y + " " + droneLoc.z);
+        //System.out.println("target xyz: " + targetCoord.x + " " + targetCoord.y + " " + targetCoord.z);
         return new short[] {(short)xStick,(short)yStick, (short)zStick, (short)yawStick};
     }
 

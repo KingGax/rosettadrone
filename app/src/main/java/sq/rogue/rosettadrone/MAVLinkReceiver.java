@@ -56,6 +56,8 @@ import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_JUMP;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_PAUSE_CONTINUE;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_HOME;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_MODE;
+import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_ROI_LOCATION;
+import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_ROI_NONE;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_DO_SET_SERVO;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_GET_HOME_POSITION;
 import static com.MAVLink.enums.MAV_CMD.MAV_CMD_MISSION_START;
@@ -165,11 +167,14 @@ public class MAVLinkReceiver {
                         break;
                     case MAV_CMD_NAV_TAKEOFF:
                         Log.d(TAG, "ALT = " + msg_cmd.param7);
+                        deactivatePIDController = false;
+                        parent.deactivatePIDController(); //deactivate here instead so takeoff can turn it back on for itself
                         mModel.mAirBorn = 0;
-                        mModel.do_takeoff(msg_cmd.param7 * (float) 1000.0);
+                        mModel.do_takeoff(msg_cmd.param7);
                         mModel.send_command_ack(MAV_CMD_NAV_TAKEOFF, MAV_RESULT.MAV_RESULT_IN_PROGRESS);
                         break;
                     case MAV_CMD_NAV_LAND:
+                        parent.deactivatePIDController();
                         mModel.do_land();
                         break;
                     case MAV_CMD_DO_SET_HOME:
@@ -185,6 +190,12 @@ public class MAVLinkReceiver {
                         break;
                     case MAV_CMD_GET_HOME_POSITION:
                         mModel.send_home_position();
+                        break;
+                    case MAV_CMD_DO_SET_ROI_LOCATION:
+                        mModel.set_ROI((double) (msg_cmd.param5 / 10000000),(double) (msg_cmd.param6 / 10000000),msg_cmd.param7);
+                        break;
+                    case MAV_CMD_DO_SET_ROI_NONE:
+                        mModel.remove_ROI();
                         break;
                     case MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES:
                         mModel.send_autopilot_version();

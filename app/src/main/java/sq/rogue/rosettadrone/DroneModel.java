@@ -46,6 +46,7 @@ import com.MAVLink.enums.MAV_PROTOCOL_CAPABILITY;
 import com.MAVLink.enums.MAV_RESULT;
 import com.MAVLink.enums.MAV_STATE;
 import com.MAVLink.enums.MAV_TYPE;
+import com.dji.mapkit.core.models.DJILatLng;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -1745,30 +1746,39 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
             // If we took off, wait for command co complete...
             Log.d(TAG,"Wait for first altitude...");
-            while (m_alt < 1000.0 && timeout < (20*(1/0.250))) {
+            float currentAlt = mFlightController.getState().getAircraftLocation().getAltitude();
+            while (currentAlt < 1.0 && timeout < (20*(1/0.250))) {
                 timeout+= 1;
                 safeSleep(250);
+                currentAlt = mFlightController.getState().getAircraftLocation().getAltitude();
+                System.out.println("waiting for first alt " + currentAlt);
             }
 
-            Log.d(TAG,"Takeoff success...");
-            safeSleep(500);
-            parent.showToast("takeoff success");
+
 
             timeout = 0;
+            currentAlt = mFlightController.getState().getAircraftLocation().getAltitude();
             // If we are airborne, or was airborne from the start...
-            if (m_alt >= 800) {
-                float desired_alt = alt - m_alt;
+            if (currentAlt >= 0.8) {
+                /*float desired_alt = alt - m_alt;
                 Log.d(TAG, "Climb out...from: "+m_alt+" to: "+desired_alt+" set: "+alt);
                 // Climb out to 99% of requested altitude, however 100% is set, just to avoid deadlock...
                 while (m_alt < desired_alt && timeout < (10*(1/0.250))){
                     do_set_motion_relative(MAV_CMD_NAV_TAKEOFF, 0, 0, (alt - m_alt) / (float) 1000.0, 0, 0, 0, 0, 0, 0b00011111111000);
                     timeout+= 1;
                     safeSleep(250);
+                    System.out.println("trying to climb");
+                }*/
+                LocationCoordinate3D coord = mFlightController.getState().getAircraftLocation();
+                float yaw = (float) (mFlightController.getState().getAttitude().yaw * Math.PI / 180);
+                if (coord.getLatitude() != 0 || coord.getLongitude() != 0){ //if 0,0 assume no gps, sorry all null islanders
+                    do_set_motion_absolute(coord.getLatitude(),coord.getLongitude(),alt,yaw,0,0,0,0,0b0000000000000000);
                 }
-                Log.d(TAG, "Climb out completed..."+m_alt);
+                Log.d(TAG,"Takeoff success...");
+                parent.showToast("takeoff success");
             }else{
-                Log.d(TAG, "Climb out failed...");
-                parent.showToast("climb failed");
+                Log.d(TAG, "Takeoff failed...");
+                parent.showToast("Takeoff failed");
             }
         }
 
@@ -1852,6 +1862,17 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         }*/
     }
 
+    public void set_ROI(double lat, double lng, double alt){
+        dronePIDController.setROI((float)lat,(float)lng,(float)alt);
+        setCameraPitch(-90f);
+        System.out.println("SETTING ROI" + lat + " " + lng + " " + alt);
+    }
+    public void remove_ROI(){
+        System.out.println("UNSETTING ROI");
+        dronePIDController.removeROI();
+        setCameraPitch(0f);
+    }
+
     void do_land() {
         mAutonomy = false;
         parent.logMessageDJI("Initiating landing");
@@ -1901,6 +1922,22 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             else
                 parent.logMessageDJI("Go home successful!\n");
         });
+    }
+
+    private void setCameraPitch(float pitchDeg){
+        Rotation.Builder rotb = new Rotation.Builder();
+        rotb.pitch(pitchDeg);
+        rotb.mode(RotationMode.ABSOLUTE_ANGLE);
+        Gimbal g = djiAircraft.getGimbal();
+        if (g != null){
+            g.rotate(rotb.build(), djiError -> {
+                if (djiError != null){
+                    System.out.println(djiError.getDescription());
+                } else{
+                    System.out.println("pitch set successfully");
+                }
+            });
+        }
     }
 
     /********************************************
@@ -1976,7 +2013,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
     // We want to move to a lat,lon,alt position, this has no support by DJI...
     public void do_set_motion_absolute(double Lat, double Lon, float alt, float head, float vx, float vy, float vz, float yaw_rate, int mask) {
         //    Log.i(TAG, "do_set_motion_absolute");
-
+        System.out.println("Set pos " + Lat + " " + Lon + " " + alt + " " + head);
         // Set our new destination...
         m_Destination_Lat = Lat;
         m_Destination_Lon = Lon;
@@ -2032,9 +2069,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 //            miniPIDFwd.reset();
 //            miniPIDSide.reset();
 
-            // This is a non standard trick, but we would like to know exactly when we have reached the position...
-            // So we move to AUTO mode while flying to position, and then go back to GUIDED...
-            // If there is another way let me know...
+
             if (globalRef == null){
                 globalRef = new GlobalRefrencePoint(m_Latitude,m_Longitude,m_alt);
             }
@@ -2087,8 +2122,10 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
                 float local_lon = (float) coord.getAircraftLocation().getLongitude();
                 float height = coord.getAircraftLocation().getAltitude();
                 float yaw = (float) Math.toRadians(coord.getAttitude().yaw);
-                System.out.println("setting lat lng alt yaw :" + local_lat + " " + local_lon + " " + height + " " + yaw);
+                //System.out.println("setting lat lng alt yaw :" + local_lat + " " + local_lon + " " + height + " " + yaw);
                 dronePIDController.setPos(local_lat,local_lon,height,yaw);
+                setCameraPitch(dronePIDController.getCameraPitch());
+                System.out.println("pitch " + dronePIDController.getCameraPitch());
                 short[] stickOutputs = dronePIDController.getStickOutputs();
                 do_set_motion_velocity(
                         stickOutputs[0] / (float) 100.0,
