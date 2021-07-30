@@ -166,7 +166,7 @@ public class MultiDroneActivity extends AppCompatActivity implements MultiDroneC
         });
     }
     @Override
-    public void handleIdReceived(int id, int port, String serverAddress) {
+    public void handleIdReceived(int id, int port, String serverAddress, int imgPort) {
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {

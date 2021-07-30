@@ -84,11 +84,10 @@ public class NativeHelper {
      * @param height
      */
     public void onFrameDataRecv(byte[] buf, int size, int frameNum, boolean isKeyFrame, int width, int height) {
-        if (dataListener != null) {
+        /*if (dataListener != null) {
             dataListener.onDataRecv(buf, size, frameNum, isKeyFrame, width, height);
             //System.out.println("frame " + frameNum + " size: " + size + " " + (isKeyFrame?"KEYFRAME":""));
-        }
-        framesSinceSend++;
+        }*/
     }
 
     public interface NativeDataListener {

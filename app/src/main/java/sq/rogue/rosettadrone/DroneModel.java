@@ -2024,7 +2024,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
     // We want to move to a lat,lon,alt position, this has no support by DJI...
     public void do_set_motion_absolute(double Lat, double Lon, float alt, float head, float vx, float vy, float vz, float yaw_rate, int mask) {
         //    Log.i(TAG, "do_set_motion_absolute");
-        System.out.println("Set pos " + Lat + " " + Lon + " " + alt + " " + head);
+        //System.out.println("Set pos " + Lat + " " + Lon + " " + alt + " " + head);
         // Set our new destination...
         m_Destination_Lat = Lat;
         m_Destination_Lon = Lon;
@@ -2059,7 +2059,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
         // The direct distance to the wp... return distance in meters...
         m_Destination_hypotenuse = getRangeBetweenWaypoints_m(m_Destination_Lat, m_Destination_Lon, 0, local_lat, local_lon, 0);
-        Log.i(TAG, "m_Destination_hypotenuse: " + m_Destination_hypotenuse + " m_Destination_brng: " + m_Destination_brng);
+        //Log.i(TAG, "m_Destination_hypotenuse: " + m_Destination_hypotenuse + " m_Destination_brng: " + m_Destination_brng);
 
         do_start_absolute_motion();
     }
@@ -2136,7 +2136,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
                 //System.out.println("setting lat lng alt yaw :" + local_lat + " " + local_lon + " " + height + " " + yaw);
                 dronePIDController.setPos(local_lat,local_lon,height,yaw);
                 setCameraPitch(dronePIDController.getCameraPitch());
-                System.out.println("pitch " + dronePIDController.getCameraPitch());
+                //System.out.println("pitch " + dronePIDController.getCameraPitch());
                 short[] stickOutputs = dronePIDController.getStickOutputs();
                 do_set_motion_velocity(
                         stickOutputs[0] / (float) 100.0,

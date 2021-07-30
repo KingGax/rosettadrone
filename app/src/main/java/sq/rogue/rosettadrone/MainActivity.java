@@ -199,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
     private ClientMessageListener clientListener = new ClientMessageListener();
 
     private MultiDroneHelper helper = new MultiDroneHelper(this);
-    private KeyframeTransmitter keyframeTransmitter = new KeyframeTransmitter("192.168.1.101", 44444);
+    private KeyframeTransmitter keyframeTransmitter;
 
     boolean connectingToMultiDrone = false;
     boolean connectedToMultiDrone = false;
@@ -590,7 +590,6 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
         wv.requestLayout();//It is necesary to refresh the screen
 
  */
-        startKeyframeTransmitter(keyframeTransmitter);
         if (savedInstanceState != null) {
             navState = savedInstanceState.getInt("navigation_state");
         }
@@ -720,6 +719,13 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
             keyframeThread = new Thread(keyframeTransmitter);
             //NativeHelper.getInstance().setKft(keyframeTransmitter);
             keyframeThread.start();
+        } else { //Stop old keyframe thread and start a new one
+            keyframeTransmitter.close();
+            keyframeThread.interrupt();
+
+            keyframeThread = new Thread(kft);
+            keyframeTransmitter = kft;
+            keyframeThread.start();
         }
     }
 
@@ -746,32 +752,26 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
                     System.out.print(st);
                 }
            }*/
-            if (videoBuffer[0] == 0 && videoBuffer[1] == 0 && videoBuffer[2] == 0 && videoBuffer[3] == 1 && videoBuffer[4] == 103){
+            /*if (videoBuffer[0] == 0 && videoBuffer[1] == 0 && videoBuffer[2] == 0 && videoBuffer[3] == 1 && videoBuffer[4] == 103){
                 System.out.println("mode: " + m_videoMode + "size " + size);
                 for (int i = 0; i < 14; i++) {
                     String st = String.format("%02X ", videoBuffer[i]);
                     System.out.print(st);
                 }
-            }
-            System.out.println();
-            if (videoBuffer[4] == 103){
-                System.out.println("KEYFRAME (i think)");
+            }*/
+            //System.out.println();
+            if (keyframeTransmitter != null){
+                if (videoBuffer[4] == 103){ //This is an SPS frame, it contains a full frame and some streaming information
+
+                    //Sets keyframe data, choose how to handle whether it does it successfully if need be
                     if (keyframeTransmitter.trySetDataToSend(videoBuffer,size)){
 
                     } else{
-                        System.out.println("already sending");
+                        //System.out.println("already sending");
                     }
-            }
-
-            if (videoBuffer[4] == 104){
-                System.out.println("FOUND PPS");
-                if (keyframeTransmitter.trySetDataToSend(videoBuffer,size)){
-
-                } else{
-                    System.out.println("already sending");
                 }
-            }
 
+            }
 
             if (m_videoMode == 2) {
                 if (mCodecManager != null) {
@@ -780,12 +780,12 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
                 // Send raw H264 to the FFMPEG parser...
                 if (mExternalVideoOut == true) {
 //                    Log.e(TAG, "Video size:: "+size);
-                    NativeHelper.getInstance().parse(videoBuffer, size, 0);
+                    //NativeHelper.getInstance().parse(videoBuffer, size, 0);
                 }
             } else {
                 // Send H.264 to the NAIL generator...
                 if (mExternalVideoOut == true) {
-                    NativeHelper.getInstance().parse(videoBuffer, size, 1);
+                    //NativeHelper.getInstance().parse(videoBuffer, size, 1);
                 }
             }
         };
@@ -1483,6 +1483,7 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
         if (mGCSCommunicator != null) {
             mGCSCommunicator.cancel(true);
             mGCSCommunicator = null;
+            System.out.println("CLOSING GCSCommunicator");
         }
     }
 
@@ -1919,6 +1920,8 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
             } catch (SocketException e) {
                 Log.d(TAG, "createTelemetrySocket() - socket exception");
                 Log.d(TAG, "exception", e);
+                System.out.println("FAILED TO CREATE SOCKET");
+                System.out.println(e.getStackTrace());
                 mainActivityWeakReference.get().logMessageDJI("Telemetry socket exception: " + gcsIPString + ":" + telemIPPort);
             } // TODO
             catch (UnknownHostException e) {
@@ -1990,14 +1993,14 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
             public void run() {
                 System.out.println("Ping recieved");
                 //mModel.setCurrentPosAsHome();
-                mModel.armMotors();
+                //mModel.armMotors();
                 //mModel.takePhoto();
 
             }
         });
     }
     @Override
-    public void handleIdReceived(int id, int port, String serverAddress) {
+    public void handleIdReceived(int id, int port, String serverAddress, int imgPort) {
         //NotificationHandler.notifySnackbar(this.findViewById(R.id.snack),
          //       R.string.connect_success, LENGTH_LONG);
         this.runOnUiThread(new Runnable() {
@@ -2014,6 +2017,8 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
                 connectedToMultiDrone = true;
                 updateServerMavPort();
                 restartSockets();
+                KeyframeTransmitter newKft = new KeyframeTransmitter(serverAddress,imgPort);
+                startKeyframeTransmitter(newKft);
             }
         });
 
@@ -2030,21 +2035,8 @@ public class MainActivity extends AppCompatActivity implements MultiDroneCallbac
     void restartSockets() {
         if (mGCSCommunicator != null) {
             mGCSCommunicator.renewDatalinks();
-            /*if (FLAG_TELEMETRY_ADDRESS_CHANGED) {
-
-                if (mExternalVideoOut == false) {
-                    if (!prefs.getBoolean("pref_separate_gcs", false)) {
-                        sendRestartVideoService();
-                    }
-                }
-//                FLAG_TELEMETRY_ADDRESS_CHANGED = false;
-            }
-            if (mExternalVideoOut == false) {
-                if (FLAG_VIDEO_ADDRESS_CHANGED) {
-                    sendRestartVideoService();
-                    FLAG_VIDEO_ADDRESS_CHANGED = false;
-                }
-            }*/
+        } else{
+            System.out.println("mGCSCommunicator NULL");
         }
     }
 

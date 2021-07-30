@@ -196,15 +196,20 @@ public class MultiDroneHelper implements ListenerCallbacks,MavLinkMessageCallbac
 
     @Override
     public void handleIdReceived(String data) {
+        try{
         String[] message = data.split(";");
         System.out.println("id data:" + data);
         System.out.println(message);
         int port = Integer.parseInt(message[1]);
         int id = Integer.parseInt(message[0]);
+        int imgPort = Integer.parseInt(message[2]);
         setDataPort(port);
         myID = id;
-        parent.handleIdReceived(id,port,serverAddress);
+        parent.handleIdReceived(id,port,serverAddress, imgPort);
         registerTimeoutHandler.removeCallbacks(registerTimeoutRunnable);
+        } catch (Exception e){
+            System.out.println("INVALID ID REPLY RECEIVED");
+        }
     }
 
     @Override
