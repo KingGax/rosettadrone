@@ -17,7 +17,7 @@ public class PIDControllerY extends PIDOneVarController{
             setPositiveProp((error >= 0));
             wipeIntegral();
         }
-        System.out.println("y error " + error + " t" + ref + " s" + state);
+        //System.out.println("y error " + error + " t" + ref + " s" + state);
         float sum = getDifferential() * wD + integral * wI + error * wP;
 
         return (sum > 1000 ? 1000 : (sum < -1000 ? -1000 : sum));

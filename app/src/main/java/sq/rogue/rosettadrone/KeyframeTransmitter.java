@@ -38,7 +38,6 @@ public class KeyframeTransmitter implements Runnable{
             currentData = data;
             currentDataSize = size;
             setDataSending(true);
-            System.out.println("Data set");
             return true;
         } else{
             return false;
@@ -54,11 +53,14 @@ public class KeyframeTransmitter implements Runnable{
     }
 
 
+    boolean alive = true;
 
     private void initialize() {
          // sending socket
         try {
+            System.out.println("waiting for host");
             socket = new Socket(host,port);
+            System.out.println("created keyframe socket");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -74,44 +76,39 @@ public class KeyframeTransmitter implements Runnable{
         byte[] sendBuffer = new byte[8 * 1024];
 
         System.out.println("Client listener initialized on port "+port);
-        while(true){
+        while(alive){
             if (isDataSending){
                 int count;
                 InputStream in = new ByteArrayInputStream(currentData);
-                System.out.println("got input stream");
                 try {
                     out = socket.getOutputStream();
-                    System.out.println("got output stream");
                     socketIn = socket.getInputStream();
                 } catch (IOException e) {
                     e.printStackTrace();
+                    System.out.println(e.getMessage());
                 }
                 try {
                     byte[] size = ByteBuffer.allocate(4).putInt(currentDataSize).array();
-                    System.out.println("putting current data size " + currentDataSize);
+                    //System.out.println("putting current data size " + currentDataSize);
                     out.write(size);
                     while ((count = in.read(sendBuffer)) > 0) {
                         out.write(sendBuffer, 0, count);
                     }
-                    System.out.println("Finished sending!");
                     boolean ack = false;
-                    System.out.println("Waiting for ack");
                     while (!ack && (socketIn.read() > 0)) {
                         //out.write(sendBuffer, 0, count);
                         ack = true;
                         Thread.sleep(100L);
                     }
-                    System.out.println("Ack recieved!");
                 } catch (SocketException e) {
                     System.out.println("Socket Error sending picture data!");
-                    if (socket.isClosed()){
-                        socket = reOpenSocket();
-                    }
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
+                    System.out.println("SHUTTING DOWN KFT");
+                    alive = false;
                 } catch (Exception e) {
+                    System.out.println(e.getMessage());
                     System.out.println("Other error sending picture data!");
                 }
-
                 setDataSending(false);
             }
             try {
@@ -119,32 +116,18 @@ public class KeyframeTransmitter implements Runnable{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-
-            /*byte[] buffer = new byte[1500]; // MTU = 1500 bytes
-            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-            // primanje paketa
-            try {
-                socket.receive(packet);
-                System.out.println("I got somethinig");
-                InetAddress senderAddress = packet.getAddress();
-                int senderPort = packet.getPort();
-
-                String receivedText = new String(buffer).trim();
-
-                System.out.println("NEW DATA: "+receivedText);
-                passMessage(receivedText);
-
-
-
-            } catch (Exception e) {
-                System.out.println("Fail");
-                e.printStackTrace();
-                continue;
-            }*/
-
-
         }
+
+        try {
+            out.close();
+            socket.close();
+            System.out.println("socket closed");
+        } catch (Exception e) {
+            System.out.println("socket maybe not closed");
+            System.out.println(e.getMessage());
+        }
+
+        System.out.println("Keyframe transmitted finished");
     }
 
     private void catchSleep(long millis){
@@ -153,6 +136,10 @@ public class KeyframeTransmitter implements Runnable{
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    public void close(){
+        alive = false;
     }
 
     private Socket reOpenSocket(){
