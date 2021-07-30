@@ -20,7 +20,6 @@ public class KeyframeTransmitter implements Runnable{
     private byte[] currentData;
     private int currentDataSize;
     private boolean isDataSending = false;
-    private boolean isDataToSend = false;
     Socket socket;
 
     public KeyframeTransmitter(String _host, int _port){
@@ -34,19 +33,24 @@ public class KeyframeTransmitter implements Runnable{
 
     }
 
-    public boolean isDataSending(){
-        return isDataSending;
-    }
-
     public boolean trySetDataToSend(byte[] data, int size){
         if (!isDataSending){
             currentData = data;
             currentDataSize = size;
-            isDataSending = true;
+            setDataSending(true);
+            System.out.println("Data set");
             return true;
         } else{
             return false;
         }
+    }
+
+    public synchronized void setDataSending(boolean sending){
+        isDataSending = sending;
+    }
+
+    public synchronized boolean getIsDataSending(){
+        return isDataSending;
     }
 
 
@@ -59,7 +63,7 @@ public class KeyframeTransmitter implements Runnable{
             e.printStackTrace();
         }
         OutputStream out = null;
-        InputStream socketIn;
+        InputStream socketIn = null;
         try {
             socketIn = socket.getInputStream();
         } catch (IOException ex) {
@@ -74,8 +78,11 @@ public class KeyframeTransmitter implements Runnable{
             if (isDataSending){
                 int count;
                 InputStream in = new ByteArrayInputStream(currentData);
+                System.out.println("got input stream");
                 try {
                     out = socket.getOutputStream();
+                    System.out.println("got output stream");
+                    socketIn = socket.getInputStream();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -87,15 +94,14 @@ public class KeyframeTransmitter implements Runnable{
                         out.write(sendBuffer, 0, count);
                     }
                     System.out.println("Finished sending!");
-                    out.close();
-                    while (!(in.read(sendBuffer) > 0)) {
+                    boolean ack = false;
+                    System.out.println("Waiting for ack");
+                    while (!ack && (socketIn.read() > 0)) {
                         //out.write(sendBuffer, 0, count);
-                        System.out.println("Waiting for ack");
+                        ack = true;
                         Thread.sleep(100L);
                     }
                     System.out.println("Ack recieved!");
-                    //out.close();
-                    //in.close();
                 } catch (SocketException e) {
                     System.out.println("Socket Error sending picture data!");
                     if (socket.isClosed()){
@@ -106,7 +112,7 @@ public class KeyframeTransmitter implements Runnable{
                     System.out.println("Other error sending picture data!");
                 }
 
-                isDataSending = false;
+                setDataSending(false);
             }
             try {
                 Thread.sleep(100L);

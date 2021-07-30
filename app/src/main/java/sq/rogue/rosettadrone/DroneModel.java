@@ -717,6 +717,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
     }
 
 
+    boolean debugTick = false;
     void tick() { // Called ever 100ms...
         ticks += 100;
 
@@ -727,6 +728,7 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
         if (ticks % 10000 == 0) {
             System.out.println("it's tick tock time");
+            debugTick = true;
         }
         try {
             if (ticks % 200 == 0) { //was 100
@@ -759,6 +761,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
 
         } catch (Exception e) {
             Log.d(TAG, "exception", e);
+            System.out.println("exception in tick");
+            e.printStackTrace();
         }
     }
 
@@ -822,8 +826,13 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
         byte[] bytes = packet.encodePacket();
 
         try {
+            if (debugTick){
+                debugTick = false;
+                System.out.println( "debug tick" + socket.isConnected() + " " + socket.getLocalPort() + " " +  socket.getInetAddress() + " " + socket.getPort());
+            }
             DatagramPacket p = new DatagramPacket(bytes, bytes.length, socket.getInetAddress(), socket.getPort());
             socket.send(p);
+
             parent.logMessageToGCS(msg.toString());
 
             if (secondarySocket != null) {
@@ -845,6 +854,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
             System.out.println("PORT UNREACHABLE");
         } catch (IOException e) {
             System.out.println("IO EXCEPTION");
+            e.printStackTrace();
+        } catch (Exception e){
             e.printStackTrace();
         }
     }

@@ -100,6 +100,7 @@ public class MAVLinkReceiver {
     private WaypointMission.Builder mBuilder;
     private ArrayList<msg_mission_item_int> mMissionItemList;
     private boolean isHome = true;
+    private int lastMessageType = 0;
 
     public MAVLinkReceiver(MainActivity parent, DroneModel model) {
 
@@ -108,8 +109,12 @@ public class MAVLinkReceiver {
     }
 
     public void process(MAVLinkMessage msg) {
-        NotificationHandler.notifySnackbar(parent.findViewById(R.id.snack),
-                R.string.message_recieved, LENGTH_LONG);
+        if (msg.msgid != lastMessageType){
+            NotificationHandler.notifySnackbar(parent.findViewById(R.id.snack),
+                    R.string.message_recieved, LENGTH_LONG);
+            lastMessageType = msg.msgid;
+        }
+
 
         // IS 0 is hart beat...
         if (msg.msgid != 0) {

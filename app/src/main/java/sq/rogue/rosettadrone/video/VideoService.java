@@ -42,8 +42,7 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
     private int mvideoBitrate = 3000;
     private int mencodeSpeed = 2;
 
-    private KeyframeTransmitter keyframeTransmitter;
-    private Thread keyframeThread;
+
 
     @Override
     public void onCreate() {
@@ -95,14 +94,7 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
         initPacketizer(mip, mvideoPort, mvideoBitrate, mencodeSpeed);
     }
 
-    public void setKeyframeTransmitter(KeyframeTransmitter kft){
-        if (keyframeThread == null){
-            keyframeTransmitter = kft;
-            keyframeThread = new Thread(keyframeTransmitter);
-            NativeHelper.getInstance().setKft(keyframeTransmitter);
-            keyframeThread.start();
-        }
-    }
+
 
     public void setDualVideo(boolean dualVideo) {
         mPacketizer.socket.UseDualVideo(dualVideo);

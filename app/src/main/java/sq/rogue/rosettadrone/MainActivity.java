@@ -14,6 +14,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbManager;
@@ -26,6 +27,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MenuInflater;
@@ -34,6 +36,8 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -58,6 +62,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -70,6 +75,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -83,6 +89,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.PreferenceManager;
+
 import dji.common.camera.SettingsDefinitions;
 import dji.common.error.DJIError;
 import dji.common.error.DJISDKError;
@@ -96,6 +103,7 @@ import dji.sdk.codec.DJICodecManager;
 import dji.sdk.products.Aircraft;
 import dji.sdk.sdkmanager.DJISDKInitEvent;
 import dji.sdk.sdkmanager.DJISDKManager;
+import kotlin.NotImplementedError;
 import multidrone.sharedclasses.UserDroneData;
 import sq.rogue.rosettadrone.logs.LogFragment;
 import sq.rogue.rosettadrone.settings.SettingsActivity;
@@ -107,8 +115,9 @@ import sq.rogue.rosettadrone.video.VideoService;
 import static com.google.android.material.snackbar.Snackbar.LENGTH_LONG;
 import static sq.rogue.rosettadrone.util.safeSleep;
 
+
 //public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,MultiDroneCallbacks {
+public class MainActivity extends AppCompatActivity implements MultiDroneCallbacks {
 
     //    public static final String FLAG_CONNECTION_CHANGE = "dji_sdk_connection_change";
     private final static int RESULT_SETTINGS = 1001;
@@ -190,11 +199,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ClientMessageListener clientListener = new ClientMessageListener();
 
     private MultiDroneHelper helper = new MultiDroneHelper(this);
-    private KeyframeTransmitter keyframeTransmitter = new KeyframeTransmitter("192.168.1.50", 4444);
+    private KeyframeTransmitter keyframeTransmitter = new KeyframeTransmitter("192.168.1.101", 44444);
 
     boolean connectingToMultiDrone = false;
     boolean connectedToMultiDrone = false;
     boolean isMessageListenerInitialized = false;
+    private Thread keyframeThread;
 
     private Runnable djiUpdateRunnable = () -> {
         Intent intent = new Intent(DJISimulatorApplication.FLAG_CONNECTION_CHANGE);
@@ -439,6 +449,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onDestroy() {
         Log.e(TAG, "onDestroy");
 
+        System.out.println("DESTROY MAIN");
         sendDroneDisconnected();
         closeGCSCommunicator();
 
@@ -461,6 +472,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onDestroy();
     }
 
+    //to reenable map add this to onCreate
+    /*SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
+    //Add this function and implement OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
@@ -482,7 +499,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         aMap.setMapType(mMaptype);
 
         updateDroneLocation();
-    }
+    }*/
 
     // Update the drone location based on states from MCU.
     private void updateDroneLocation() {
@@ -554,7 +571,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //       getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
         //             WindowManager.LayoutParams.FLAG_FULLSCREEN);
         //----------------
-
+        //this.getWindow().setSustainedPerformanceMode(true);
         setContentView(R.layout.activity_gui);
 
         mProduct = RDApplication.getProductInstance(); // Should be set by Connection ...
@@ -573,7 +590,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         wv.requestLayout();//It is necesary to refresh the screen
 
  */
-
+        startKeyframeTransmitter(keyframeTransmitter);
         if (savedInstanceState != null) {
             navState = savedInstanceState.getInt("navigation_state");
         }
@@ -605,10 +622,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         deleteApplicationDirectory();
         initLogs();
         initPacketizer();
-
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
 
         initFlightController();
 
@@ -691,11 +704,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         super.onNewIntent(intent);
 
+        System.out.println("NEW INTENT " + intent.getAction());
+
         String action = intent.getAction();
         if (UsbManager.ACTION_USB_ACCESSORY_ATTACHED.equals(action)) {
             Intent attachedIntent = new Intent();
             attachedIntent.setAction(DJISDKManager.USB_ACCESSORY_ATTACHED);
             sendBroadcast(attachedIntent);
+        }
+    }
+
+    private void startKeyframeTransmitter(KeyframeTransmitter kft){
+        if (keyframeThread == null){
+            keyframeTransmitter = kft;
+            keyframeThread = new Thread(keyframeTransmitter);
+            //NativeHelper.getInstance().setKft(keyframeTransmitter);
+            keyframeThread.start();
         }
     }
 
@@ -715,6 +739,40 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // The callback for receiving the raw H264 video data for camera live view
         // For newer drones...
         mReceivedVideoDataListener = (videoBuffer, size) -> {
+
+            /*if (videoBuffer[0] == 0 && videoBuffer[1] == 0 && videoBuffer[2] == 0 && videoBuffer[3] == 1 && videoBuffer[4] == 33){
+                for (int i = 0; i < 10; i++) {
+                    String st = String.format("%02X ", videoBuffer[i]);
+                    System.out.print(st);
+                }
+           }*/
+            if (videoBuffer[0] == 0 && videoBuffer[1] == 0 && videoBuffer[2] == 0 && videoBuffer[3] == 1 && videoBuffer[4] == 103){
+                System.out.println("mode: " + m_videoMode + "size " + size);
+                for (int i = 0; i < 14; i++) {
+                    String st = String.format("%02X ", videoBuffer[i]);
+                    System.out.print(st);
+                }
+            }
+            System.out.println();
+            if (videoBuffer[4] == 103){
+                System.out.println("KEYFRAME (i think)");
+                    if (keyframeTransmitter.trySetDataToSend(videoBuffer,size)){
+
+                    } else{
+                        System.out.println("already sending");
+                    }
+            }
+
+            if (videoBuffer[4] == 104){
+                System.out.println("FOUND PPS");
+                if (keyframeTransmitter.trySetDataToSend(videoBuffer,size)){
+
+                } else{
+                    System.out.println("already sending");
+                }
+            }
+
+
             if (m_videoMode == 2) {
                 if (mCodecManager != null) {
                     mCodecManager.sendDataToDecoder(videoBuffer, size);
@@ -829,6 +887,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }*/
             videoViewWidth = width;
             videoViewHeight = height;
+            System.out.println("surface texture available");
+            System.out.println(width + " wh " + height);
 
             Log.d(TAG, "real onSurfaceTextureAvailable: width " + videoViewWidth + " height " + videoViewHeight + " Mode: " + compare_height);
             if (mCodecManager == null) {
@@ -1366,6 +1426,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mGCSCommunicator = new GCSCommunicatorAsyncTask(this);
         mGCSCommunicator.execute();
 
+
+
         // Multiple tries and a timeout are necessary because of a bug that causes all the
         // components of mProduct to be null sometimes.
         int tries = 0;
@@ -1755,8 +1817,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             }
                         }
                         System.out.println("failed trying to decode packet");
+                    } catch (SocketTimeoutException socketTimeoutException){
+                        //System.out.println("Socket timeout");
                     } catch (IOException e) {
-                        //e.printStackTrace();
+                        e.printStackTrace();
                         //logMessageDJI("IOException: " + e.toString());
                     }
                 }
@@ -1849,7 +1913,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             try {
                 mainActivityWeakReference.get().socket = new DatagramSocket();
                 mainActivityWeakReference.get().socket.connect(InetAddress.getByName(gcsIPString), telemIPPort);
-                mainActivityWeakReference.get().socket.setSoTimeout(10);
+                mainActivityWeakReference.get().socket.setSoTimeout(40);
 
                 mainActivityWeakReference.get().logMessageDJI("Starting GCS telemetry link: " + gcsIPString + ":" + telemIPPort);
             } catch (SocketException e) {
