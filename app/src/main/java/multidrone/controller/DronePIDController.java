@@ -139,15 +139,15 @@ public class DronePIDController {
         float xynorm = xStick*xStick + yStick * yStick;
         if (xynorm > 1_000_000) //max value of each stick 1000 so 1000^2
         {
-            xStick /= xynorm;
-            yStick /= xynorm;
+            xStick /= Math.sqrt(xynorm);
+            yStick /= Math.sqrt(xynorm);
         }
         float zStick = zController.getOutput();
         float yawStick = yawController.getOutput();
         float zrnorm = zStick*zStick + yawStick*yawStick;
         if (zrnorm > 1_000_000){
-            zStick /= zrnorm;
-            yawStick /= zrnorm;
+            zStick /= Math.sqrt(zrnorm);
+            yawStick /= Math.sqrt(zrnorm);
         }
         System.out.println("sticks xyzr: " + (short)xStick + " " + (short)yStick + " " + (short)zStick + " " + (short)yawStick);
         //System.out.println("Xerrors  P D I : " + xController.error * xWP + " " + xController.getDifferential() * xWD + " " + xController.Isum * xWI);
