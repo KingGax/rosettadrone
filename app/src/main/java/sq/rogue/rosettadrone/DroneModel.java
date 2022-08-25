@@ -2139,8 +2139,8 @@ public class DroneModel implements CommonCallbacks.CompletionCallback {
                 //System.out.println("pitch " + dronePIDController.getCameraPitch());
                 short[] stickOutputs = dronePIDController.getStickOutputs();
                 do_set_motion_velocity(
-                        stickOutputs[0] / (float) 100.0,
-                        stickOutputs[1] / (float) 100.0,
+                        (stickOutputs[0] / (float) 100.0)*(float)1.5,
+                        (stickOutputs[1] / (float) 100.0)*(float)1.5,
                         stickOutputs[2] / (float) 260.0,
                         stickOutputs[3] / (float) 50.0,
                         0b0000011111000111);

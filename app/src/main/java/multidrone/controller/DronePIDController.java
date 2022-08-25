@@ -14,21 +14,21 @@ public class DronePIDController {
     private NEDCoordinate targetCoord;
 
     private PIDControllerX xController = new PIDControllerX();
-    private float xWP = 25;
+    private float xWP = 20;
     private float xWI = 0;
-    private float xWD = 9_000;
+    private float xWD = 7_000;
     private float xIntegralWipeDist = 10;
 
     private PIDControllerY yController = new PIDControllerY();
-    private float yWP = 25;
+    private float yWP = 20;
     private float yWI = 0;
-    private float yWD = 9_000;
+    private float yWD = 7_000;
     private float yIntegralWipeDist = 10;
 
     private PIDControllerZ zController = new PIDControllerZ();
-    private float zWP = 20;
+    private float zWP = 20*2.5f;
     private float zWI = 0;
-    private float zWD = 8_000;
+    private float zWD = 8_000*1.5f;
     private float zIntegralWipeDist = 5;
 
     private PIDControllerYaw yawController = new PIDControllerYaw();
@@ -136,19 +136,49 @@ public class DronePIDController {
     public short[] getStickOutputs(){
         float xStick = -xController.getOutput();
         float yStick = -yController.getOutput();
-        float xynorm = xStick*xStick + yStick * yStick;
-        if (xynorm > 1_000_000) //max value of each stick 1000 so 1000^2
-        {
-            xStick /= Math.sqrt(xynorm);
-            yStick /= Math.sqrt(xynorm);
-        }
         float zStick = zController.getOutput();
         float yawStick = yawController.getOutput();
-        float zrnorm = zStick*zStick + yawStick*yawStick;
-        if (zrnorm > 1_000_000){
-            zStick /= Math.sqrt(zrnorm);
-            yawStick /= Math.sqrt(zrnorm);
+
+        float xnorm = (float)Math.sqrt((xStick*xStick));
+        float ynorm = (float)Math.sqrt((yStick*yStick));
+        float znorm = (float)Math.sqrt((zStick*zStick));
+        float wnorm = (float)Math.sqrt((yawStick*yawStick));
+
+        float maxStick = 1000.0f;
+
+        if (xnorm > maxStick)
+        {
+            xStick = xStick*(xnorm/maxStick);
         }
+        if (ynorm > maxStick)
+        {
+            xStick = yStick*(ynorm/maxStick);
+        }
+        if (znorm > maxStick)
+        {
+            xStick = zStick*(znorm/maxStick);
+        }
+        if (wnorm > maxStick)
+        {
+            yawStick = yawStick*(wnorm/maxStick);
+        }
+
+        /*
+        float xynorm = (float)Math.sqrt((xStick*xStick) + (yStick*yStick));
+
+        if (xynorm > maxStick) //max value of each stick 1000 so 1000^2
+        {
+            xStick = (xStick/xynorm)*maxStick;
+            yStick = (yStick/xynorm)*maxStick;
+        }
+
+        float zrnorm = (float)Math.sqrt((zStick*zStick) + (yawStick*yawStick));
+        if (zrnorm > maxStick){
+            zStick = (zStick/zrnorm)*maxStick;
+            yawStick = (yawStick/zrnorm)*maxStick;
+        }
+        /*
+         */
         System.out.println("sticks xyzr: " + (short)xStick + " " + (short)yStick + " " + (short)zStick + " " + (short)yawStick);
         //System.out.println("Xerrors  P D I : " + xController.error * xWP + " " + xController.getDifferential() * xWD + " " + xController.Isum * xWI);
         //System.out.println("Yerrors  P D I : " + yController.error * yWP + " " + yController.getDifferential() * yWD + " " + yController.Isum * yWI);
